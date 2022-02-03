@@ -1,0 +1,10 @@
+#Extends "Modes/TrackMania/TM_Rounds_Online.Script.txt"
+
+#Setting S_TrustClientSimu False
+#Setting S_UseCrudeExtrapolation False
+
+***Match_StartServer***
+***
+UsePvPCollisions = True;
+UsePvECollisions = True;
+***
