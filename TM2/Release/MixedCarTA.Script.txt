@@ -1,0 +1,105 @@
+//MP4 Version
+//Script by Plantathon
+#Extends "Modes/TrackMania/TimeAttack.Script.txt"
+#Include "MathLib" as ML
+#Include "TextLib" as TL
+#Const C_BotsNo 0
+
+***Match_InitServer***
+***
+declare Text ItemDir;
+declare Text TM2ItemDir;
+declare Text TM2ItemExtention;
+switch (LoadedTitle.TitleId) {
+    case "TMAll@domino54": {
+        ItemDir = "Vehicles/";
+				TM2ItemDir = "Vehicles/";
+				TM2ItemExtention = ".Item.Gbx";
+    }
+    default: {
+        ItemDir = "";
+				TM2ItemDir = "";
+				TM2ItemExtention = "";
+    }
+}
+declare Integer CarNumber;
+declare Ident StadiumCar;
+declare Ident CanyonCar;
+declare Ident ValleyCar;
+declare Ident LagoonCar;
+declare Ident DesertCar;
+declare Ident RallyCar;
+declare Ident SnowCar;
+declare Ident IslandCar;
+declare Ident CoastCar;
+declare Ident BayCar;
+declare Ident MapCar;
+StadiumCar = ItemList_AddWithSkin("StadiumCar", "Profile");
+CanyonCar = ItemList_AddWithSkin(TL::Join("", [TM2ItemDir, "CanyonCar", TM2ItemExtention]), "Default");
+ValleyCar = ItemList_AddWithSkin(TL::Join("", [TM2ItemDir, "ValleyCar", TM2ItemExtention]), "Default");
+LagoonCar = ItemList_AddWithSkin(TL::Join("", [TM2ItemDir, "LagoonCar", TM2ItemExtention]), "Default");
+if (LoadedTitle.AuthorName != "nadeo"){
+DesertCar = ItemList_AddWithSkin(TL::Join("", [ItemDir, "DesertCar.Item.Gbx"]), "Default");
+RallyCar = ItemList_AddWithSkin(TL::Join("", [ItemDir, "RallyCar.Item.Gbx"]), "Default");
+SnowCar = ItemList_AddWithSkin(TL::Join("", [ItemDir, "SnowCar.Item.Gbx"]), "Default");
+IslandCar = ItemList_AddWithSkin(TL::Join("", [ItemDir, "IslandCar.Item.Gbx"]), "Default");
+CoastCar = ItemList_AddWithSkin(TL::Join("", [ItemDir, "CoastCar.Item.Gbx"]), "Default");
+BayCar = ItemList_AddWithSkin(TL::Join("", [ItemDir, "BayCar.Item.Gbx"]), "Default");
+}
+***
+
+***Match_StartMap***
+***
+Users_SetNbFakeUsers(C_BotsNo, 0);
+log(LoadedTitle.BaseTitleId);
+declare Integer CarNumb;
+if (LoadedTitle.AuthorName != "nadeo"){
+	CarNumb = 10;
+} else {
+	CarNumb = 4;
+}
+CarNumber = ML::Rand(1, CarNumb);
+foreach (Player in Players) {
+    switch (CarNumber) {
+        case 1: {
+            MapCar = StadiumCar;
+        }
+        case 2: {
+            MapCar = CanyonCar;
+        }
+        case 3: {
+            MapCar = ValleyCar;
+        }
+        case 4: {
+            MapCar = LagoonCar;
+        }
+        case 5: {
+            MapCar = DesertCar;
+        }
+        case 6: {
+            MapCar = RallyCar;
+        }
+        case 7: {
+            MapCar = SnowCar;
+        }
+        case 8: {
+            MapCar = IslandCar;
+        }
+        case 9: {
+            MapCar = CoastCar;
+        }
+        case 10: {
+            MapCar = BayCar;
+        }
+    }
+}
+***
+
+***Match_PlayLoop***
+***
+		foreach (Player in Players) {
+		if (Player.IsSpawned) {
+		Player.ForceModelId = MapCar;
+	}
+}
+***
