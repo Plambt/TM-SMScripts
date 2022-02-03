@@ -1,0 +1,96 @@
+#Extends "Modes/TrackMania/TM_Rounds_Online.Script.txt"
+
+***Match_InitMap***
+***
+declare Integer RemoveEfectTime;
+declare Integer RandomEfectTime;
+***
+
+***Match_PlayLoop***
+***
+foreach (Player in Players) {
+	if (RemoveEfectTime == Now) {
+			while (SetPlayer_DelayedIsFull(Player)) MB_Yield();
+			SetPlayer_Delayed_Reset(Player);
+	}
+	if (Player.SpawnStatus == CSmPlayer::ESpawnStatus::Spawning){
+		RandomEfectTime = Now + 20000;
+	}
+	if (RandomEfectTime == Now) {
+		switch (ML::Rand(1, 4)) {
+			case 1: {
+			while (SetPlayer_DelayedIsFull(Player)) MB_Yield();
+                SetPlayer_Delayed_GravityCoef(Player, 0.002);
+                RemoveEfectTime = Now + 5000;
+                log("Gravity");
+                RandomEfectTime = Now + 20000;
+			}
+			case 2: {
+				while (SetPlayer_DelayedIsFull(Player)) MB_Yield();
+                SetPlayer_Delayed_NoEngine(Player, True);
+                RemoveEfectTime = Now + 5000;
+                log("EngineOff");
+                RandomEfectTime = Now + 20000;
+			}
+			case 3: {
+				while (SetPlayer_DelayedIsFull(Player)) MB_Yield();
+                SetPlayer_Delayed_NoSteer(Player, True);
+                RemoveEfectTime = Now + 5000;
+                log("NoSteer");
+                RandomEfectTime = Now + 20000;
+			}
+			case 4: {
+                while (SetPlayer_DelayedIsFull(Player)) MB_Yield();
+                SetPlayer_Delayed_Fragile(Player, True);
+                RemoveEfectTime = Now + 5000;
+				log("Fragile");
+				RandomEfectTime = Now + 20000;
+			}
+			}
+	}
+}
+foreach (Event in RacePendingEvents) {
+    if (Event.Type == Events::C_Type_Waypoint) {
+			while (SetPlayer_DelayedIsFull(Event.Player)) MB_Yield();
+			SetPlayer_Delayed_Reset(Event.Player);
+        switch (ML::Rand(1, 8)) {
+            case 1: {
+                while (SetPlayer_DelayedIsFull(Event.Player)) MB_Yield();
+                SetPlayer_Delayed_ControlCoef(Event.Player, 0.50);
+                RemoveEfectTime = Now + 5000;
+                log("Control");
+            }
+			case 2: {
+			    while (SetPlayer_DelayedIsFull(Event.Player)) MB_Yield();
+                SetPlayer_Delayed_AccelCoef(Event.Player, 0.50);
+                RemoveEfectTime = Now + 5000;
+                log("Accel");
+			}
+            case 3: {
+                while (SetPlayer_DelayedIsFull(Event.Player)) MB_Yield();
+                SetPlayer_Delayed_ControlCoef(Event.Player, 0.25);
+                RemoveEfectTime = Now + 5000;
+                log("Control2");
+            }
+			case 4: {
+			    while (SetPlayer_DelayedIsFull(Event.Player)) MB_Yield();
+                SetPlayer_Delayed_AccelCoef(Event.Player, 0.25);
+                RemoveEfectTime = Now + 5000;
+                log("Accel2");
+			}
+			case 5: {
+                RemoveEfectTime = Now + 5000;
+                log("CPNothing1");
+			}
+			case 7: {
+                RemoveEfectTime = Now + 5000;
+                log("CPNothing2");
+			}
+			case 8: {
+                RemoveEfectTime = Now + 5000;
+                log("CPNothing3");
+			}
+    }
+    }
+}
+***
