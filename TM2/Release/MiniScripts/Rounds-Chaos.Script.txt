@@ -1,0 +1,13 @@
+//MP4 Version
+//Script by Plantathon
+#Extends "Modes/TrackMania/Rounds.Script.txt"
+#Setting S_EnableScaleCar True
+#Setting S_EnableBonusEvents True
+#Setting S_EnableCheckpointBonus True
+
+***Match_StartMap***
+***
+EnableScaleCar = S_EnableScaleCar;
+EnableBonusEvents = S_EnableBonusEvents;
+EnableCheckpointBonus = S_EnableCheckpointBonus;
+***
