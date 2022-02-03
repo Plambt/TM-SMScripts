@@ -4,7 +4,7 @@
 #Include "MathLib" as ML
 #Include "TextLib" as TL
 #Setting S_SameCar True as "Same Car for Everyone"
-#Const C_BotsNo 1
+#Const C_BotsNo 0
 
 
 ***Match_InitServer***
