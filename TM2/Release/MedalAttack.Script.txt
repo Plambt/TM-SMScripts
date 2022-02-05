@@ -1,0 +1,331 @@
+//MP4 Version
+ #Extends "Modes/TrackMania/Base/ModeTrackmania.Script.txt"
+
+ #Const	CompatibleMapTypes	"Race"
+ #Const	Version							"02-04-2022"
+ #Const Author               					"Plantathon"
+ #Const	ScriptName					"Modes/TrackMania/MedalAttack.Script.txt"
+ 
+ // ---------------------------------- //
+ // Includes
+ // ---------------------------------- //
+ #Include "TextLib" as TL
+ #Include "Libs/Nadeo/Sound.Script.txt" as Sound
+ 
+ // ---------------------------------- //
+ // Settings
+ // ---------------------------------- //
+ #Setting S_TimeLimit				300	as _("Time limit :") ///< Time limit before going to the next map
+ #Setting S_WarmUpNb				0	as _("Number of warm up :")
+ #Setting S_WarmUpDuration	0	as _("Duration of one warm up :")
+ #Setting S_ForceLapsNb			0 as _("Number of Laps :") //< "< 0" use laps number from map, "== 0" independant laps, "> 0" force laps number
+ 
+ #Setting S_ScriptEnvironment "production"/*/"development"*/
+ 
+ // ---------------------------------- //
+ // Constants
+ // ---------------------------------- //
+ #Const Description _("""$fffIn $f00Medal Attack$fff mode, the goal is to get the $f00most medals$fff.
+ 
+ You have as many tries as you want, and you can $ff0retry$fff when you want by pressing the $ff0'Backspace'$fff key.
+ 
+ When the time is up, the $f00winner$fff is the player with the $f00most medals$fff.""")
+ 
+ #Const C_HudModulePath "Nadeo/TrackMania/Rounds/Hud.Module.Gbx" ///< Path to the hud module
+ #Const C_ManiaAppUrl "file://Media/ManiaApps/Nadeo/TrackMania/Rounds/Rounds.Script.txt"
+ #Const C_BotsNb 0
+ #Const C_MedalSound "file://Media/Manialinks/Nadeo/Common/ChannelProgression/EmblemUp.wav"
+ 
+ // ---------------------------------- //
+ // Extends
+ // ---------------------------------- //
+ ***Match_LogVersion***
+ ***
+ MB_LogVersion(ScriptName, Version);
+ ***
+ 
+ ***Match_Settings***
+ ***
+ MB_Settings_UseDefaultHud = False;
+ ***
+ 
+ ***Match_Rules***
+ ***
+ ModeInfo::SetName("Medal Attack");
+ ModeInfo::SetType(ModeInfo::C_Type_FreeForAll);
+ ModeInfo::SetRules(Description);
+ ModeInfo::SetStatusMessage(_("TYPE: Free for all\nOBJECTIVE: Get the most medals on the track."));
+ ***
+ 
+ ***Match_LoadHud***
+ ***
+ ClientManiaAppUrl = C_ManiaAppUrl;
+ Hud_Load(C_HudModulePath);
+ MB_SortScores(CTmMode::ETmScoreSortOrder::TotalPoints);
+ 
+ // Initialize UI modules
+ UI::LoadModules([
+	UIModules::C_Module_TimeGap,
+	UIModules::C_Module_SmallScoresTable,
+	UIModules::C_Module_Chrono,
+	UIModules::C_Module_CheckpointTime,
+	UIModules::C_Module_PrevBestTime,
+	UIModules::C_Module_SpeedAndDistance,
+	UIModules::C_Module_Countdown,
+	UIModules::C_Module_Laps,
+	UIModules::C_Module_MapInfo,
+	UIModules::C_Module_MapRanking,
+	UIModules::C_Module_LiveInfo,
+	UIModules::C_Module_SpectatorInfo,
+	UIModules::C_Module_ViewersCount
+]);
+ UI::SetTimeGapMode("BestRace");
+ UI::SetCheckpointTimeMode("BestRace");
+ ***
+ 
+ ***Match_StartServer***
+ ***
+ UiRounds = True;
+ UiLaps = True;
+ Sound::Load();
+ Sound::Attach();
+ // Initialize mode
+ UseClans = False;
+ RespawnBehaviour::Set(CTmMode::ETMRespawnBehaviour::GiveUpBeforeFirstCheckPoint);
+ WarmUp::SetAvailability(True);
+ ChannelProgression::Enable(S_IsChannelServer);
+ ***
+ 
+ ***Match_InitMap***
+ ***
+ InitMedalUI();
+ declare Integer PrevTimeLimit;
+ declare Integer StartTime;
+ ***
+ 
+ ***Match_StartMap***
+ ***
+ // Add bot when necessary
+ Users_SetNbFakeUsers(C_BotsNb, 0);
+ 
+ // Warm up
+ declare WarmUpDuration = S_WarmUpDuration * 1000;
+ MB_WarmUp(S_WarmUpNb, WarmUpDuration);
+ 
+ // Initialize laps
+ IndependantLaps = (S_ForceLapsNb == 0);
+ UI::SetIndependantLaps(IndependantLaps);
+ if (S_ForceLapsNb > 0) NbLaps = S_ForceLapsNb;
+ else NbLaps = -1;
+ 
+ // Initialize race
+ StartTime = Now + 3000;
+ PrevTimeLimit = S_TimeLimit;
+ SetTimeLimit(StartTime, S_TimeLimit);
+ 
+ // Spawn players for the race
+ foreach (Player in Players) {
+     TM::StartRace(Player, StartTime);
+ }
+ ***
+ 
+ ***Match_PlayLoop***
+ ***
+ // Manage events
+ foreach (Event in PendingEvents) {
+     declare Processed = Events::Valid(Event);
+     if (!Processed) continue;
+     
+     // Waypoint
+     if (Event.Type == CTmModeEvent::EType::WayPoint) {
+         declare Better = False;
+         
+         if (Event.IsEndRace) {
+            Scores::SetPlayerPrevRace(Event.Player.Score, Event.Player.CurRace);
+            if (Event.Player.CurRace.Time <= Map.TMObjective_BronzeTime && Event.Player.CurRace.Time > Map.TMObjective_SilverTime) {
+                Scores::AddPlayerRoundPoints(Event.Player.Score, 2);
+                UIManager.GetUI(Event.Player).BigMessage = ("$a85+2");
+                Sound::PlaySound(C_MedalSound, -10.0);
+                UIManager.UIAll.SendChat(TL::Join("", [Event.Player.User.Name, "$z$a85 scored a Bronze Medal!"]));
+            }
+            if (Event.Player.CurRace.Time < Map.TMObjective_SilverTime && Event.Player.CurRace.Time > Map.TMObjective_GoldTime) {
+                Scores::AddPlayerRoundPoints(Event.Player.Score, 4);
+                UIManager.GetUI(Event.Player).BigMessage = ("$ccc+4");
+                Sound::PlaySound(C_MedalSound, -10.0);
+                UIManager.UIAll.SendChat(TL::Join("", [Event.Player.User.Name, "$z$ccc scored a Silver Medal!"]));
+            }
+            if (Event.Player.CurRace.Time <= Map.TMObjective_GoldTime && Event.Player.CurRace.Time > Map.TMObjective_AuthorTime) {
+                Scores::AddPlayerRoundPoints(Event.Player.Score, 6);
+                UIManager.GetUI(Event.Player).BigMessage = ("$ff9+6");
+				Sound::PlaySound(C_MedalSound, -10.0);
+                UIManager.UIAll.SendChat(TL::Join("", [Event.Player.User.Name, "$z$ff9 scored a Gold Medal!"]));
+            }
+            if (Event.Player.CurRace.Time <= Map.TMObjective_AuthorTime) {
+                Scores::AddPlayerRoundPoints(Event.Player.Score, 8);
+                UIManager.GetUI(Event.Player).BigMessage = ("$8f8+8");
+                Sound::PlaySound(C_MedalSound, -10.0);
+                UIManager.UIAll.SendChat(TL::Join("", [Event.Player.User.Name, "$z$8f8 scored an Author Medal!"]));
+            }
+            TM::WaitRace(Event.Player);
+             }
+         }
+     // GiveUp
+     else if (Event.Type == CTmModeEvent::EType::GiveUp) {
+         TM::WaitRace(Event.Player);
+     }
+ }
+ 
+ // Spawn players
+ foreach (Player in Players) {
+     if (TM::IsWaiting(Player)) {
+         TM::StartRace(Player);
+     }
+     if (Player.Speed < 1 && Player.Speed > 0 ) {
+        UIManager.GetUI(Player).BigMessage = "";
+     }
+ }
+ 
+ // Update the map duration setting
+ if (PrevTimeLimit != S_TimeLimit) {
+     PrevTimeLimit = S_TimeLimit;
+     SetTimeLimit(StartTime, S_TimeLimit);
+ }
+ 
+ // End the map when time limit is reached
+ if (CutOffTimeLimit > 0 && Now >= CutOffTimeLimit) {
+     MB_StopMatch();
+ }
+ ***
+ 
+ ***Match_EndMap***
+ ***
+ // Ensure that we stop the match (after a vote for the next map, ...)
+ MB_StopMatch();
+ 
+ CutOffTimeLimit = -1;
+ MB_SortScores(CTmMode::ETmScoreSortOrder::TotalPoints);
+ Scores::SetDefaultLadderSort(Scores::C_Sort_MapPoints);
+ Scores::SetPlayerWinner(Scores::GetBestPlayer(Scores::C_Sort_MatchPoints, Scores::Order_Descending()));
+ Scores::UnspawnLosers();
+ MB_Sleep(1000);
+ TM::WaitRaceAll();
+ ***
+ 
+ ***Match_BeforeCloseLadder***
+ ***
+ if (ChannelProgression::IsEnabled()) {
+     declare ReferenceTime = Map.MapInfo.TMObjective_AuthorTime;
+     declare BestRaceTime = ReferenceTime;
+     foreach (Score in Scores) {
+         declare RaceTime = Scores::GetPlayerBestRaceTime(Score);
+         if (RaceTime > 0 && RaceTime < BestRaceTime) BestRaceTime = RaceTime;
+     }
+     if (BestRaceTime < ReferenceTime) ReferenceTime = BestRaceTime;
+     
+     declare PlayersPerformances = 0.;
+     declare PlayersEchelons = 0;
+     foreach (Score in Scores) {
+         declare PlayerBestRaceTime = Scores::GetPlayerBestRaceTime(Score);
+         declare TimeAttack_Performance for Score = 0.;
+         
+         if (
+             PlayerBestRaceTime > 0 &&
+             ReferenceTime > 0 &&
+             PlayerBestRaceTime < Map.MapInfo.TMObjective_BronzeTime &&
+             ReferenceTime < Map.MapInfo.TMObjective_BronzeTime
+         ) {
+             declare A = (Map.MapInfo.TMObjective_BronzeTime - PlayerBestRaceTime) * 1.;
+             declare B = Map.MapInfo.TMObjective_BronzeTime - ReferenceTime;
+             TimeAttack_Performance = ((A / B) * 0.9) + 0.1;
+         } else {
+             TimeAttack_Performance = 0.;
+         }
+         
+         PlayersPerformances += TimeAttack_Performance;
+         PlayersEchelons += 10 - Utils::EchelonToInteger(Score.User.Echelon);
+         
+         Log::Log("""[TimeAttack] TimeAttack_Performance > {{{Score.User.Login}}} > BronzeTime : {{{Map.MapInfo.TMObjective_BronzeTime}}} | AuthorTime : {{{Map.MapInfo.TMObjective_AuthorTime}}} | BestRaceTime : {{{BestRaceTime}}} | ReferenceTime : {{{ReferenceTime}}} | PlayerBestRaceTime : {{{PlayerBestRaceTime}}} | TimeAttack_Performance: {{{TimeAttack_Performance}}}""");
+     }
+     
+     declare PP = 0.;
+     if (Scores.count != 0) {
+         PP = (((PlayersPerformances * 10.) + PlayersEchelons) / (Scores.count * 20.)) * 0.1;
+         Log::Log("""[TimeAttack] PP : ((({{{PlayersPerformances}}} * 10.) + {{{PlayersEchelons}}}) / ({{{Scores.count}}} * 20.)) * 0.1 = {{{PP}}}""");
+     }
+         
+     foreach (Score in Scores) {
+         declare TimeAttack_Performance for Score = 0.;
+         
+         declare P = PP * TimeAttack_Performance;
+         declare Performance = TimeAttack_Performance - P;
+         if (Performance < 0.) Performance = 0.;
+         
+         Log::Log("""[TimeAttack] Performance > {{{Score.User.Login}}} > PP : {{{PP}}} | TimeAttack_Performance : {{{TimeAttack_Performance}}} | P : {{{P}}} | Performance: {{{Performance}}}""");
+         
+         ChannelProgression::SetPlayerPerformance(Score, Performance);
+     }
+ }
+ ***
+
+***Match_EndServer***
+***
+ Sound::Unload();
+***
+ 
+ // ---------------------------------- //
+ // Functions
+ // ---------------------------------- //
+ // ---------------------------------- //
+ /** Update the time limit
+  *
+  *	@param	_StartTime								The starting time of the map
+  *	@param	_NewTimeLimit							The time limit before going to the next map
+  */
+ Void SetTimeLimit(Integer _StartTime, Integer _NewTimeLimit) {
+     if (_NewTimeLimit <= 0) {
+         CutOffTimeLimit = -1;
+         if (Hud != Null) Hud.ScoresTable.SetFooterText(TL::Compose("%1 -", _("Time Limit :")));
+     } else {
+         CutOffTimeLimit = _StartTime + (S_TimeLimit * 1000);
+         if (Hud != Null) Hud.ScoresTable.SetFooterText(TL::Compose("%1 "^TL::TimeToText(S_TimeLimit*1000, False), _("Time Limit :")));
+     }
+ }
+
+Text HudMedals() {
+    return """
+    <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<manialink version="3">
+    <label pos="-143 75" z-index="0" size="19 5" text="00.00" textfont="GameFontSemiBold" halign="left" valign="center" id="AuthorTime"/>
+    <label pos="-143 65" z-index="0" size="19 5" text="00.00" textfont="GameFontSemiBold" halign="left" valign="center" id="GoldTime"/>
+    <label pos="-143 55" z-index="0" size="19 5" text="00.00" textfont="GameFontSemiBold" halign="left" valign="center" id="SilverTime"/>
+    <label pos="-143 45" z-index="0" size="19 5" text="00.00" textfont="GameFontSemiBold" halign="left" valign="center" id="BronzeTime"/>
+    <quad pos="-150 45" z-index="0" size="10 10" bgcolor="FFF" opacity="1" substyle="MedalBronze" style="MedalsBig" halign="center" valign="center"/>
+    <quad pos="-150 55" z-index="0" size="10 10" bgcolor="FFF" opacity="1" substyle="MedalSilver" style="MedalsBig" halign="center" valign="center"/>
+    <quad pos="-150 65" z-index="0" size="10 10" bgcolor="FFF" opacity="1" substyle="MedalGold" style="MedalsBig" halign="center" valign="center"/>
+    <quad pos="-150 75" z-index="0" size="10 10" bgcolor="FFF" opacity="1" substyle="MedalNadeo" style="MedalsBig" halign="center" valign="center"/>
+    <quad pos="-158 82" z-index="0" size="35 44" bgcolor="FFF" opacity="1" style="Bgs1InRace" substyle="BgList"/>
+	<script><!--
+#Include "TextLib" as TL
+main() {
+    declare CMlLabel lblAuthorTime <=> (Page.GetFirstChild("AuthorTime") as CMlLabel);
+	declare CMlLabel lblGoldTime <=> (Page.GetFirstChild("GoldTime") as CMlLabel);
+	declare CMlLabel lblSilverTime <=> (Page.GetFirstChild("SilverTime") as CMlLabel);
+	declare CMlLabel lblBronzeTime <=> (Page.GetFirstChild("BronzeTime") as CMlLabel);
+	while (True) {
+        yield;
+ lblAuthorTime.Value = TL::Join("", ["$s", TL::TimeToText(Map.TMObjective_AuthorTime, True)]);
+ lblGoldTime.Value = TL::Join("", ["$s", TL::TimeToText(Map.TMObjective_GoldTime, True)]);
+ lblSilverTime.Value = TL::Join("", ["$s", TL::TimeToText(Map.TMObjective_SilverTime, True)]);
+ lblBronzeTime.Value = TL::Join("", ["$s", TL::TimeToText(Map.TMObjective_BronzeTime, True)]);
+	}
+}
+--></script>
+</manialink>
+""";
+}
+
+Void InitMedalUI() {
+	Layers::Create("Layer_Medals", HudMedals());
+	Layers::SetType("Layer_Medals", CUILayer::EUILayerType::Normal);
+	Layers::Attach("Layer_Medals");
+}
