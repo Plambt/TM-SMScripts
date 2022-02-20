@@ -71,7 +71,6 @@ if (PlayersNbDead > 0) {
 	foreach (Player in Players) {
 		if (Player.SpawnStatus == CSmPlayer::ESpawnStatus::NotSpawned && Race::IsReadyToStart(Player)) {
 			Player.ForceModelId = PilotSkin;
-			Race::Start(Player);
 		}
 	}
 }
