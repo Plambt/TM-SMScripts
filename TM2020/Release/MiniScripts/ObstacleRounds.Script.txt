@@ -1,0 +1,93 @@
+/*
+Rounds Version
+Obstacle mini script by Plantathon.
+This script will ONLY send records on CharacterPilot maps.
+Regular race maps are to be played for fun and not for cheating please.
+*/
+#Extends "Modes/TrackMania/TM_Rounds_Online.Script.txt"
+#Setting S_TrustClientSimu False
+#Setting S_UseCustomPilotSkin False
+#Const C_LayerCrosshair "Layer_Crosshair"
+declare Ident[] G_PilotName;
+
+***Match_InitMatch***
+***
+declare Ident PilotSkin;
+if (S_UseCustomPilotSkin == True) {
+	PilotSkin = ItemList_AddWithSkin("CharacterPilot", "https://cdn.discordapp.com/attachments/843622567058079755/936083387561697360/ArenaPlayerDefaultSkin.zip");
+} else {
+	PilotSkin = ItemList_AddWithSkin("CharacterPilot", "Skins/Models/HelmetPilot/Stadium.zip");
+}
+init();
+***
+
+***Match_AfterLoadHud***
+***
+UIManager.UIAll.OverlayHideCrosshair = False;
+UIManager.UIAll.OverlayHideGauges = False;
+***
+
+***Match_InitMap***
+***
+foreach (Player in AllPlayers) {
+		Player.ForceModelId = PilotSkin;
+}
+***
+
+***Match_StartMap***
+***
+Race::SetupRecord(
+	MenuConsts::C_ScopeType_Season,
+	MenuConsts::C_ScopeType_PersonalBest,
+	MenuConsts::C_GameMode_TimeAttack,
+	"",
+	C_UploadRecord,
+	C_DisplayRecordGhost,
+	C_DisplayRecordMedal,
+	C_CelebrateRecordGhost,
+	C_CelebrateRecordMedal,
+	False
+);
+if (MapPlayerModelName != "CharacterPilot") {
+	Race::SetupRecord(
+		MenuConsts::C_ScopeType_Season,
+		MenuConsts::C_ScopeType_PersonalBest,
+		MenuConsts::C_GameMode_TimeAttack,
+		"",
+		False,
+		False,
+		False,
+		False,
+		False,
+		False
+	);
+}
+log(MapPlayerModelName);
+***
+
+***Match_PlayLoop***
+***
+if (PlayersNbDead > 0) {
+	foreach (Player in Players) {
+		if (Player.SpawnStatus == CSmPlayer::ESpawnStatus::NotSpawned && Race::IsReadyToStart(Player)) {
+			Player.ForceModelId = PilotSkin;
+			Race::Start(Player);
+		}
+	}
+}
+***
+
+Text ObsticleCrosshair() {
+    return """
+    <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+    <manialink version="3" name="Crosshair">
+    <quad pos="0 0" z-index="0" size="5 5" bgcolor="FFF" style="UICommon64_1" substyle="Plus_light" modulatecolor="FFF" halign="center" valign="center" opacity="0.3"/><quad pos="0 0" z-index="0" size="5 5" bgcolor="000" style="MeshModelerIcons" substyle="Checker" halign="center" valign="center" modulatecolor="000" opacity="1"/>
+</manialink>
+""";
+}
+
+Void init() {
+	Layers::Create(C_LayerCrosshair, ObsticleCrosshair());
+	Layers::SetType(C_LayerCrosshair, CUILayer::EUILayerType::Normal);
+	Layers::Attach(C_LayerCrosshair);
+}
