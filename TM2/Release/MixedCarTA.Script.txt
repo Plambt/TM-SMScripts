@@ -2,7 +2,6 @@
 //Script by Plantathon
 #Extends "Modes/TrackMania/TimeAttack.Script.txt"
 #Include "MathLib" as ML
-#Include "TextLib" as TL
 #Const C_BotsNo 0
 
 ***Match_InitServer***
@@ -59,7 +58,7 @@ if (LoadedTitle.AuthorName != "nadeo"){
 	CarNumb = 4;
 }
 CarNumber = ML::Rand(1, CarNumb);
-foreach (Player in Players) {
+foreach (Player in AllPlayers) {
     switch (CarNumber) {
         case 1: {
             MapCar = StadiumCar;
@@ -92,14 +91,15 @@ foreach (Player in Players) {
             MapCar = BayCar;
         }
     }
+	Player.ForceModelId = MapCar;
 }
 ***
 
 ***Match_PlayLoop***
 ***
-		foreach (Player in Players) {
-		if (Player.IsSpawned) {
+		foreach (Player in AllPlayers) {
+		if (TM::IsWaiting(Player)) {
 		Player.ForceModelId = MapCar;
-	}
+		}
 }
 ***
