@@ -5,6 +5,18 @@
 
 ***Match_StartServer***
 ***
+Race::SetupRecord(
+	MenuConsts::C_ScopeType_Season,
+	MenuConsts::C_ScopeType_PersonalBest,
+	MenuConsts::C_GameMode_TimeAttack,
+	"",
+  False,
+	False,
+	False,
+	False,
+	False,
+	False
+);
 UsePvPCollisions = True;
 UsePvECollisions = True;
 ***
