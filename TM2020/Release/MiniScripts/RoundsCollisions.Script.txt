@@ -10,7 +10,7 @@ Race::SetupRecord(
 	MenuConsts::C_ScopeType_PersonalBest,
 	MenuConsts::C_GameMode_TimeAttack,
 	"",
-  False,
+ 	False,
 	False,
 	False,
 	False,
