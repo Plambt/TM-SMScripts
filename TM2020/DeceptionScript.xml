@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<manialink version="3">
+    <label pos="0 80" z-index="1" size="50 10" text="Current Effect:" halign="center" valign="center" textfont="RajdhaniMono" textemboss="1"/>
+    <label pos="0 75" z-index="1" size="30 10" text="None" halign="center" textfont="RajdhaniMono" valign="center" id="EffectLabel" textemboss="1"/>
+    <quad pos="0 77" z-index="0" size="40 15" bgcolor="FFF" opacity="0.7" halign="center" valign="center" style="UICommon128_1" substyle="BgDialog"/>
+<script><!--
+//#RequireContext CMlScriptIngame
+#Include "MathLib" as ML
+
+Void ResetPlayerStats() {
+    GUIPlayer.GravityCoef = 1.0;
+    GUIPlayer.AccelCoef = 1.0;
+    GUIPlayer.ControlCoef = 1.0;
+    GUIPlayer.AdherenceCoef = 1.0;
+}
+
+main() {
+    declare Integer CheckpointCount;
+    declare Text CurrentEffect;
+    declare CMlLabel EffectLabel = (Page.GetFirstChild("EffectLabel") as CMlLabel);
+    ResetPlayerStats();
+    CurrentEffect = "None";
+    CheckpointCount = GUIPlayer.CurrentLapWaypointTimes.count;
+    while (True) {
+        yield;
+        EffectLabel.Value = CurrentEffect;
+        log(GUIPlayer.GravityCoef ^ GUIPlayer.AccelCoef ^ GUIPlayer.ControlCoef ^ GUIPlayer.AdherenceCoef);
+        if (GUIPlayer.CurrentLapWaypointTimes.count != CheckpointCount) {
+            ResetPlayerStats();
+            switch (ML::Rand(0, 3)) {
+                case 0: {
+                    CurrentEffect = "Gravity";
+                }
+                case 1: {
+                    CurrentEffect = "Acceleration";
+                }
+                case 2: {
+                    CurrentEffect = "Control";
+                }
+                case 3: {
+                    CurrentEffect = "Adherence";
+                }
+            }
+            CheckpointCount = GUIPlayer.CurrentLapWaypointTimes.count;
+        }
+        switch (CurrentEffect) {
+            case "Gravity": {
+                if (GUIPlayer.GravityCoef != 0.5) {
+                    ResetPlayerStats();
+                    GUIPlayer.GravityCoef = 0.5;
+                }
+            }
+            case "Acceleration": {
+                if (GUIPlayer.AccelCoef != 0.5) {
+                    ResetPlayerStats();
+                    GUIPlayer.AccelCoef = 0.5;
+                }
+            }
+            case "Control": {
+                if (GUIPlayer.ControlCoef != 0.5) {
+                    ResetPlayerStats();
+                    GUIPlayer.ControlCoef = 0.5;
+                }
+            }
+            case "Adherence": {
+                if (GUIPlayer.AdherenceCoef != 0.5) {
+                    ResetPlayerStats();
+                    GUIPlayer.AdherenceCoef = 0.5;
+                }
+            }
+        }
+    }
+    
+}
+--></script>
+</manialink>
