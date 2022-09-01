@@ -24,7 +24,6 @@ main() {
     while (True) {
         yield;
         EffectLabel.Value = CurrentEffect;
-        log(GUIPlayer.GravityCoef ^ GUIPlayer.AccelCoef ^ GUIPlayer.ControlCoef ^ GUIPlayer.AdherenceCoef);
         if (GUIPlayer.CurrentLapWaypointTimes.count != CheckpointCount) {
             ResetPlayerStats();
             switch (ML::Rand(0, 3)) {
