@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<manialink version="3">
+<script><!--
+//#RequireContext CMlScriptIngame
+#Include "MathLib" as ML
+
+main() {
+    declare Integer CheckpointCount;
+    CheckpointCount = GUIPlayer.CurrentLapWaypointTimes.count;
+    while (True) {
+        yield;
+        if (GUIPlayer.CurrentLapWaypointTimes.count != CheckpointCount) {
+            OpenLink("https://youtu.be/dQw4w9WgXcQ", CMlScript::LinkType::ExternalBrowser);
+            CheckpointCount = GUIPlayer.CurrentLapWaypointTimes.count;
+        }
+    }
+    
+}
+--></script>
+</manialink>
