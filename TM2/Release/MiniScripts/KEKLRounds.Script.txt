@@ -1,0 +1,93 @@
+//#RequireContext CTmMode
+#Extends "Modes/TrackMania/Rounds.Script.txt"
+
+#Include "MathLib" as ML
+#Include "TextLib" as TL
+
+#Const C_CarIndex [0 => "StadiumCar",1 => "CanyonCar",2 => "ValleyCar",3 => "LagoonCar",4 => "DesertCar",5 => "RallyCar",6 => "SnowCar",7 => "CoastCar",8 => "IslandCar",9 => "BayCar"]
+
+declare Ident[Text] CarModels;
+declare Ident RoundCar;
+
+***Match_InitServer***
+***
+foreach (Car in C_CarIndex) {
+    CarModels[Car] = ItemList_AddWithSkin("Vehicles/" ^ Car ^ ".Item.Gbx", "Default");
+}
+***
+
+***Match_StartMap***
+***
+LogMapEffects();
+declare metadata Boolean RandEvents for Map;
+//declare metadata Integer RoundLimit for Map;
+EnableScaleCar = RandEvents;
+EnableBonusEvents = RandEvents;
+EnableCheckpointBonus = RandEvents;
+***
+
+***Match_StartRound***
+***
+declare metadata Boolean RandCars for Map;
+if (RandCars) {
+    RoundCar = CarModels[C_CarIndex[ML::Rand(0, 9)]];
+}
+else {
+    RoundCar = NullId;
+}
+foreach (Player in AllPlayers) {
+    SetPlayerSettings(Player);
+}
+***
+
+***Match_PlayLoop***
+***
+foreach (Event in PendingEvents) {
+    if (Event.Type == CTmModeEvent::EType::OnPlayerAdded) {
+        if (Event.Player != Null) {
+            SetPlayerSettings(Event.Player);
+        }
+    }
+}
+foreach (Player in AllPlayers) {
+    SetPlayerSettings(Player);
+}
+***
+
+***Match_StartMap***
+***
+foreach (Player in AllPlayers) {
+    Player.ForceModelId = NullId;
+}
+***
+
+Void SetPlayerSettings(CTmPlayer _Player){
+    declare metadata Boolean LowGravity for Map;
+    if (LowGravity) {
+        _Player.GravityCoef = 0.5;
+    }
+    else {
+        _Player.GravityCoef = 1.0;
+    }
+    _Player.ForceModelId = RoundCar;
+}
+
+Void LogMapEffects(){
+    declare Text EffectString;
+    declare metadata Boolean RandEvents for Map;
+    declare metadata Boolean LowGravity for Map;
+    declare metadata Boolean RandCars for Map;
+    if (RandEvents) {
+        EffectString ^= "RandomEffects ";
+    }
+    if (LowGravity) {
+        EffectString ^= "LowGravity ";
+    }
+    if (RandCars) {
+        EffectString ^= "RandomCars";
+    }
+    if (EffectString == "") {
+        EffectString = "None";
+    }
+    UIManager.UIAll.SendChat("MapEffects: " ^ EffectString);
+}
