@@ -14,24 +14,24 @@ Text KEKLOptionsUI(){
     <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 	<manialink version="3">
     <frame id="Frame_MainFrame" pos="125">
-        <quad pos="28.5 50" z-index="0" size="15 2" bgcolor="FFFA" halign="center" valign="center" image="file://Media/Images/ModeAssets/ColorFill.png" colorize="74f"/>
-        <quad pos="20 50" z-index="0" size="2 2" bgcolor="FFFA" halign="center" valign="center" image="file://Media/Images/ModeAssets/RoundedOuter.png" rot="90" colorize="74f"/>
-        <quad pos="20 35" z-index="0" size="2 2" bgcolor="FFFA" halign="center" valign="center" image="file://Media/Images/ModeAssets/RoundedOuter.png" colorize="74f"/>
-        <quad pos="22 48" z-index="0" size="2 2" bgcolor="FFFA" halign="center" valign="center" image="file://Media/Images/ModeAssets/RoundedInner.png" rot="90" colorize="74f"/>
-        <quad pos="22 37" z-index="0" size="2 2" bgcolor="FFFA" halign="center" valign="center" image="file://Media/Images/ModeAssets/RoundedInner.png" colorize="74f"/>
-        <quad pos="20 42.5" z-index="0" size="2 13" bgcolor="FFFA" halign="center" valign="center" image="file://Media/Images/ModeAssets/ColorFill.png" colorize="74f"/>
-        <quad pos="28.5 35" z-index="0" size="15 2" bgcolor="FFFA" halign="center" valign="center" image="file://Media/Images/ModeAssets/ColorFill.png" colorize="74f"/>
+        <quad pos="28.5 50" z-index="0" size="15 2" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="74f"/>
+        <quad pos="20 50" z-index="0" size="2 2" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" rot="90" colorize="74f"/>
+        <quad pos="20 35" z-index="0" size="2 2" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" colorize="74f"/>
+        <quad pos="22 48" z-index="0" size="2 2" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" rot="90" colorize="74f"/>
+        <quad pos="22 37" z-index="0" size="2 2" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" colorize="74f"/>
+        <quad pos="20 42.5" z-index="0" size="2 13" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="74f"/>
+        <quad pos="28.5 35" z-index="0" size="15 2" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="74f"/>
         <label pos="29 42.5" z-index="0" size="15 15" text="$00eK$b3bE   $0b8K$eb0L" valign="center" halign="center" autonewline="1" textsize="5" textfont="Gotham/Gotham-Bold" textemboss="1" linespacing="0.8"/>
         <quad pos="27.5 42.5" z-index="0" size="15 15" bgcolor="555A" valign="center" id="Button_ToggleKEKLMenu" style="Bgs1" substyle="BgCard" opacity="0.3" scriptevents="1" halign="center"/>
-        <quad pos="35 50" z-index="0" size="15 15" bgcolor="555A" halign="right" valign="top" image="file://Media/Images/ModeAssets/GradientBG.png" opacity="1"/>
+        <quad pos="35 50" z-index="0" size="15 15" bgcolor="555A" halign="right" valign="top" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/GradientBG.png" opacity="1"/>
         <frame id="Frame_KEKLEditor" hidden="1">
-            <quad pos="-25 -8" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="file://Media/Images/ModeAssets/RoundedOuter.png" colorize="74f"/>
-            <quad pos="-25 50" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="file://Media/Images/ModeAssets/RoundedOuter.png" rot="90" colorize="74f"/>
-            <quad pos="-20 -3" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="file://Media/Images/ModeAssets/RoundedInner.png" colorize="74f"/>
-            <quad pos="-20 45" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="file://Media/Images/ModeAssets/RoundedInner.png" rot="90" colorize="74f"/>
-            <quad pos="7 50" z-index="0" size="60 5" bgcolor="FFFA" halign="center" valign="center" image="file://Media/Images/ModeAssets/ColorFill.png" colorize="74f"/>
-            <quad pos="-25 21" z-index="0" size="5 54" bgcolor="FFFA" halign="center" valign="center" image="file://Media/Images/ModeAssets/ColorFill.png" colorize="74f"/>
-            <quad pos="7 -8" z-index="0" size="60 5" bgcolor="FFFA" halign="center" valign="center" image="file://Media/Images/ModeAssets/ColorFill.png" colorize="74f"/>
+            <quad pos="-25 -8" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" colorize="74f"/>
+            <quad pos="-25 50" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" rot="90" colorize="74f"/>
+            <quad pos="-20 -3" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" colorize="74f"/>
+            <quad pos="-20 45" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" rot="90" colorize="74f"/>
+            <quad pos="7 50" z-index="0" size="60 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="74f"/>
+            <quad pos="-25 21" z-index="0" size="5 54" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="74f"/>
+            <quad pos="7 -8" z-index="0" size="60 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="74f"/>
             <label pos="-20 43" z-index="0" size="50 10" text="Map Options" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Medium" textsize="4"/>
             <label pos="-20 30" z-index="0" size="50 10" text="Low Gravity" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
             <quad pos="15 30" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Gravity"/>
@@ -41,7 +41,7 @@ Text KEKLOptionsUI(){
             <quad pos="15 10" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Cars"/>
             <label pos="-23 0" z-index="0" size="50 10" text="Round Limit" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3" hidden="1"/>
             <entry pos="15 0" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" substyle="Check" id="Entry_Rounds" default="-1" hidden="1"/>
-            <quad pos="5 21" z-index="0" size="60 58" bgcolor="777A" valign="center" image="file://Media/Images/ModeAssets/GradientBG.png" opacity="0.5" halign="center"/>
+            <quad pos="5 21" z-index="0" size="60 58" bgcolor="777A" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/GradientBG.png" opacity="0.5" halign="center"/>
         </frame>
     </frame>
         <script><!--
