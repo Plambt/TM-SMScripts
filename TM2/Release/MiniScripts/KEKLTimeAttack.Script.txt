@@ -4,7 +4,7 @@
 #Include "MathLib" as ML
 #Include "TextLib" as TL
 
-#Const C_CarIndex [0 => "StadiumCar",1 => "CanyonCar",2 => "ValleyCar",3 => "LagoonCar",4 => "DesertCar",5 => "RallyCar",6 => "SnowCar",7 => "CoastCar",8 => "IslandCar",9 => "BayCar"]
+#Const C_CarIndex [0 => "StadiumCar",1 => "CanyonCar",2 => "ValleyCar",3 => "LagoonCar",4 => "DesertCar",5 => "RallyCar",6 => "SnowCar",7 => "CoastCar",8 => "IslandCar",9 => "BayCar", 10 => "TrafficCar"]
 
 declare Ident[Text] CarModels;
 
@@ -71,7 +71,7 @@ Void SetPlayerSettings(CTmPlayer _Player){
         _Player.GravityCoef = 1.0;
     }
     if (RandCars) {
-        _Player.ForceModelId = CarModels[C_CarIndex[ML::Rand(0, 9)]];
+        _Player.ForceModelId = CarModels[C_CarIndex[ML::Rand(0, 10)]];
     }
     else {
         _Player.ForceModelId = NullId;
