@@ -364,7 +364,7 @@ Void SetPlayerPenalty(CTmPlayer _Player, Integer _PenaltyTime){
 Void SetRoundCar(){
     declare Integer CarIndex;
     declare Boolean CarFound;
-    if (UsedCars.count == C_CarIndex.count - SubtractIndex) {
+    if (UsedCars.count == C_CarIndex.count) {
         UsedCars.clear();
     }
     while (!CarFound) {
