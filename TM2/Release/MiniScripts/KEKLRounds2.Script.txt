@@ -32,11 +32,12 @@
  #Const C_BotsNb 0
  #Const C_HudModulePath "Nadeo/TrackMania/Rounds/Hud.Module.Gbx" ///< Path to the hud module
  #Const C_ManiaAppUrl "file://Media/ManiaApps/Nadeo/TrackMania/Rounds/Rounds.Script.txt"
- #Const C_CarIndex [0 => "StadiumCar",1 => "CanyonCar",2 => "ValleyCar",3 => "LagoonCar",4 => "DesertCar",5 => "RallyCar",6 => "SnowCar",7 => "CoastCar",8 => "IslandCar",9 => "BayCar", 10 => "TrafficCar"]
+ #Const C_CarIndex [0 => "StadiumCar",1 => "CanyonCar",2 => "ValleyCar",3 => "LagoonCar",4 => "DesertCar",5 => "RallyCar",6 => "SnowCar",7 => "CoastCar",8 => "IslandCar",9 => "BayCar", 10 => "TrafficCar", 11 => "FlippyCar"]
  
  #Const Description _("""$fffA moddified version of Nadeo's rounds script which allows mappers to add (usually) fun effects to their maps!!!""")
 
 declare Integer[] UsedCars;
+declare Integer[] MapCars;
 declare Ident[Text] CarModels;
 declare Ident RoundCar;
  
@@ -74,7 +75,13 @@ declare Ident RoundCar;
  declare PrevRoundsPerMap = S_RoundsPerMap - 1;
  declare PrevMapsPerMatch = S_MapsPerMatch - 1;
  foreach (Car in C_CarIndex) {
-    CarModels[Car] = ItemList_AddWithSkin("Vehicles/" ^ Car ^ ".Item.Gbx", "Default");
+    if (Car != "FlippyCar"){
+        CarModels[Car] = ItemList_AddWithSkin("Vehicles/" ^ Car ^ ".Item.Gbx", "Default");
+    }
+    else {
+        CarModels[Car] = ItemList_AddWithSkin("VehiclesExtra/CanyonCarFlippy.Item.Gbx", "Default");
+    }
+    
 }
  ***
  
@@ -95,9 +102,19 @@ declare Ident RoundCar;
  ***
  //Init KEKL Effects
 declare metadata Boolean RandEvents for Map;
-EnableScaleCar = RandEvents;
-EnableBonusEvents = RandEvents;
-EnableCheckpointBonus = RandEvents;
+declare metadata Boolean SizeChanges for Map;
+declare metadata Integer EffectVersion for Map;
+if (EffectVersion == 0){
+    EnableScaleCar = RandEvents;
+    EnableBonusEvents = RandEvents;
+    EnableCheckpointBonus = RandEvents;
+}
+else {
+    EnableScaleCar = SizeChanges;
+    EnableBonusEvents = RandEvents;
+    EnableCheckpointBonus = SizeChanges;
+}
+MapCars = GetMapCars();
 UsedCars.clear();
 RoundCar = NullId;
 foreach (Player in AllPlayers) {
@@ -336,6 +353,7 @@ if (UseCrashPenalty) {
     declare metadata Boolean UseCrashPenalty for Map;
     declare metadata Boolean LowGravity for Map;
     declare Integer PenaltyTimeout for _Player;
+    _Player.EnableStuntMode = True;
     if (LowGravity) {
         _Player.GravityCoef = 0.5;
     }
@@ -360,21 +378,36 @@ Void SetPlayerPenalty(CTmPlayer _Player, Integer _PenaltyTime){
         PenaltyTimeout = Now + _PenaltyTime;
     }
 }
-
+Integer[] GetMapCars(){
+    declare metadata Integer EffectVersion for Map;
+    declare metadata Boolean[Integer] EnabledCars for Map;
+    declare Integer[] CarList;
+    if (EffectVersion != 0){
+        for (i, 0, 11){
+            if (EnabledCars[i]){
+                CarList.add(i);
+            }
+        }
+        return CarList;
+    }
+    return [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+}
 Void SetRoundCar(){
     declare Integer CarIndex;
     declare Boolean CarFound;
-    if (UsedCars.count == C_CarIndex.count) {
+    if (UsedCars.count == MapCars.count) {
         UsedCars.clear();
     }
     while (!CarFound) {
         yield;
-        CarIndex = ML::Rand(0, C_CarIndex.count - 1);
+        CarIndex = MapCars[ML::Rand(0, MapCars.count - 1)];
         if (!UsedCars.exists(CarIndex)) {
             CarFound = True;
         }
     }
     UsedCars.add(CarIndex);
+    log(UsedCars);
+    log(MapCars);
     log(C_CarIndex[CarIndex]);
     RoundCar = CarModels[C_CarIndex[CarIndex]];
 }
@@ -602,11 +635,26 @@ Void SetRoundCar(){
             declare metadata Boolean RandCars for Map;
             declare metadata Boolean IncStuntPoints for Map;
             declare metadata Boolean UseCrashPenalty for Map;
-            if (RandEvents) {
-                EffectNames.add("RandomEvents");
-            }
+            declare metadata Integer EffectVersion for Map;
+            declare metadata Boolean SizeChanges for Map;
             if (LowGravity) {
                 EffectNames.add("LowGravity");
+            }
+            switch (EffectVersion) {
+                case 0: {
+                    if (RandEvents){
+                        EffectNames.add("RandomEvents");
+                        EffectNames.add("SizeChanges");
+                    }
+                }
+                default: {
+                    if (RandEvents) {
+                        EffectNames.add("RandomEvents");
+                    }
+                    if (SizeChanges) {
+                        EffectNames.add("SizeChanges");
+                    }
+                }
             }
             if (RandCars) {
                 EffectNames.add("RandomCars");
