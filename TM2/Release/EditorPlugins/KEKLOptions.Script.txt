@@ -1,13 +1,38 @@
 #RequireContext CMapEditorPlugin
+#Include "TextLib" as TL
+#Const ScriptVersion 1
+#Const DefaultCars [0 => True, 1 => True, 2 => True, 3 => True, 4 => True, 5 => True, 6 => True, 7 => True, 8 => True, 9 => True, 10 => True, 11 => False]
+#Const InvalidCars [0 => False, 1 => False, 2 => False, 3 => False, 4 => False, 5 => False, 6 => False, 7 => False, 8 => False, 9 => False, 10 => False, 11 => False]
 
 #Struct K_KEKLOptions {
     Boolean LowGravity;
     Boolean RandCars;
     Boolean RandEvents;
+    Boolean SizeChanges;
+    Boolean RallyCar;
+    Boolean SnowCar;
+    Boolean DesertCar;
+    Boolean IslandCar;
+    Boolean BayCar;
+    Boolean CoastCar;
+    Boolean CanyonCar;
+    Boolean ValleyCar;
+    Boolean LagoonCar;
+    Boolean StadiumCar;
+    Boolean TrafficCar;
+    Boolean FlippyCar;
     Integer RoundLimit;
 }
 
 declare CUILayer OptionsLayer;
+
+Text CarsToText(Boolean[Integer] Cars){
+    declare Text CarText;
+    foreach(Car in Cars){
+        CarText = CarText ^ Car;
+    }
+    return CarText;
+}
 
 Text KEKLOptionsUI(){
     return """
@@ -32,15 +57,52 @@ Text KEKLOptionsUI(){
             <quad pos="7 50" z-index="0" size="60 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="74f"/>
             <quad pos="-25 21" z-index="0" size="5 54" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="74f"/>
             <quad pos="7 -8" z-index="0" size="60 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="74f"/>
-            <label pos="-20 43" z-index="0" size="50 10" text="Map Options" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Medium" textsize="4"/>
-            <label pos="-20 30" z-index="0" size="50 10" text="Low Gravity" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
-            <quad pos="15 30" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Gravity"/>
-            <label pos="-20 20" z-index="0" size="50 10" text="Rand Events" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
-            <quad pos="15 20" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Effects"/>
-            <label pos="-20 10" z-index="0" size="50 10" text="Rand Cars" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
-            <quad pos="15 10" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Cars"/>
-            <label pos="-23 0" z-index="0" size="50 10" text="Round Limit" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3" hidden="1"/>
-            <entry pos="15 0" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" substyle="Check" id="Entry_Rounds" default="-1" hidden="1"/>
+            <frame id="Frame_RegularOptions">
+                <label pos="-20 43" z-index="0" size="50 10" text="Map Options" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Medium" textsize="4"/>
+                <label pos="-20 30" z-index="0" size="50 10" text="Low Gravity" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
+                <quad pos="15 30" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Gravity"/>
+                <label pos="-20 20" z-index="0" size="50 10" text="Rand Events" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
+                <quad pos="15 20" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Effects"/>
+                <label pos="-20 10" z-index="0" size="50 10" text="Size Changes" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
+                <quad pos="15 10" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Size"/>
+                <label pos="-20 0" z-index="0" size="50 10" text="Rand Cars" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
+                <quad pos="15 00" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Cars"/>
+                <quad pos="25 00" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons128x32_1" substyle="Settings" id="Toggle_CarSettings"/>
+                <label pos="-23 0" z-index="0" size="50 10" text="Round Limit" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3" hidden="1"/>
+                <entry pos="15 0" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" substyle="Check" id="Entry_Rounds" default="-1" hidden="1"/>
+            </frame>
+            <frame id="Frame_CarOptions" hidden="1">
+                <label pos="-20 43" z-index="0" size="50 10" text="Car Options" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Medium" textsize="4"/>
+                <label pos="-15 35" z-index="0" size="10 10" text="Rally" halign="center" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
+                <quad pos="-15 29" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Rally"/>
+                <label pos="-3 35" z-index="0" size="10 10" text="Snow" halign="center" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
+                <quad pos="-3 29" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Snow"/>
+                <quad pos="10 29" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Desert"/>
+                <label pos="10 35" z-index="0" size="10 10" text="Desert" halign="center" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
+
+                <quad pos="-15 19" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Bay"/>
+                <label pos="-15 25" z-index="0" size="10 10" text="Bay" halign="center" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
+                <quad pos="-3 19" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Island"/>
+                <label pos="-3 25" z-index="0" size="10 10" text="Island" halign="center" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
+                <quad pos="10 19" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Coast"/>
+                <label pos="10 25" z-index="0" size="10 10" text="Coast" halign="center" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
+
+                <quad pos="-15 9" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Canyon"/>
+                <label pos="-15 15" z-index="0" size="10 10" text="Canyon" halign="center" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
+                <quad pos="-3 9" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Valley"/>
+                <label pos="-3 15" z-index="0" size="10 10" text="Valley" halign="center" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
+                <quad pos="10 9" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Lagoon"/>
+                <label pos="10 15" z-index="0" size="10 10" text="Lagoon" halign="center" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
+
+                <quad pos="-15 -1" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Stadium"/>
+                <label pos="-15 5" z-index="0" size="10 10" text="Stadium" halign="center" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
+                <quad pos="-3 -1" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Traffic"/>
+                <label pos="-3 5" z-index="0" size="10 10" text="Traffic" halign="center" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
+                <quad pos="10 -1" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Flippy"/>
+                <label pos="10 5" z-index="0" size="10 10" text="Flippy" halign="center" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
+                
+                <quad pos="25 00" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons128x32_1" substyle="Close" id="Toggle_CarSettings"/>
+            </frame>
             <quad pos="5 21" z-index="0" size="60 58" bgcolor="777A" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/GradientBG.png" opacity="0.5" halign="center"/>
         </frame>
     </frame>
@@ -51,21 +113,62 @@ Text KEKLOptionsUI(){
             Boolean LowGravity;
             Boolean RandCars;
             Boolean RandEvents;
+            Boolean SizeChanges;
+            Boolean RallyCar;
+            Boolean SnowCar;
+            Boolean DesertCar;
+            Boolean IslandCar;
+            Boolean BayCar;
+            Boolean CoastCar;
+            Boolean CanyonCar;
+            Boolean ValleyCar;
+            Boolean LagoonCar;
+            Boolean StadiumCar;
+            Boolean TrafficCar;
+            Boolean FlippyCar;
             Integer RoundLimit;
         }
         
         main () {
             declare CMlQuad LowGravityQuad = (Page.GetFirstChild("Toggle_Gravity") as CMlQuad);
             declare CMlQuad RandEventsQuad = (Page.GetFirstChild("Toggle_Effects") as CMlQuad);
+            declare CMlQuad SizeEventsQuad = (Page.GetFirstChild("Toggle_Size") as CMlQuad);
             declare CMlQuad RandCarsQuad = (Page.GetFirstChild("Toggle_Cars") as CMlQuad);
+            declare CMlQuad RallyCarQuad = (Page.GetFirstChild("Toggle_Rally") as CMlQuad);
+            declare CMlQuad SnowCarQuad = (Page.GetFirstChild("Toggle_Snow") as CMlQuad);
+            declare CMlQuad DesertCarQuad = (Page.GetFirstChild("Toggle_Desert") as CMlQuad);
+            declare CMlQuad IslandCarQuad = (Page.GetFirstChild("Toggle_Island") as CMlQuad);
+            declare CMlQuad CoastCarQuad = (Page.GetFirstChild("Toggle_Coast") as CMlQuad);
+            declare CMlQuad BayCarQuad = (Page.GetFirstChild("Toggle_Bay") as CMlQuad);
+            declare CMlQuad CanyonCarQuad = (Page.GetFirstChild("Toggle_Canyon") as CMlQuad);
+            declare CMlQuad ValleyCarQuad = (Page.GetFirstChild("Toggle_Valley") as CMlQuad);
+            declare CMlQuad LagoonCarQuad = (Page.GetFirstChild("Toggle_Lagoon") as CMlQuad);
+            declare CMlQuad StadiumCarQuad = (Page.GetFirstChild("Toggle_Stadium") as CMlQuad);
+            declare CMlQuad TrafficCarQuad = (Page.GetFirstChild("Toggle_Traffic") as CMlQuad);
+            declare CMlQuad FlippyCarQuad = (Page.GetFirstChild("Toggle_Flippy") as CMlQuad);
             declare CMlEntry RoundLimitEnt = (Page.GetFirstChild("Entry_Rounds") as CMlEntry);
             declare CMlFrame OptionsFrame = (Page.GetFirstChild("Frame_KEKLEditor") as CMlFrame);
+            declare CMlFrame SettingsFrame = (Page.GetFirstChild("Frame_RegularOptions") as CMlFrame);
+            declare CMlFrame CarsFrame = (Page.GetFirstChild("Frame_CarOptions") as CMlFrame);
             declare K_KEKLOptions MapOptions for Page;
             
             RoundLimitEnt.Value = MapOptions.RoundLimit ^ "";
             RandCarsQuad.StyleSelected = MapOptions.RandCars;
             RandEventsQuad.StyleSelected = MapOptions.RandEvents;
             LowGravityQuad.StyleSelected = MapOptions.LowGravity;
+            SizeEventsQuad.StyleSelected = MapOptions.SizeChanges;
+            RallyCarQuad.StyleSelected = MapOptions.RallyCar;
+            SnowCarQuad.StyleSelected = MapOptions.SnowCar;
+            DesertCarQuad.StyleSelected = MapOptions.DesertCar;
+            IslandCarQuad.StyleSelected = MapOptions.IslandCar;
+            CoastCarQuad.StyleSelected = MapOptions.CoastCar;
+            BayCarQuad.StyleSelected = MapOptions.BayCar;
+            CanyonCarQuad.StyleSelected = MapOptions.CanyonCar;
+            ValleyCarQuad.StyleSelected = MapOptions.ValleyCar;
+            LagoonCarQuad.StyleSelected = MapOptions.LagoonCar;
+            StadiumCarQuad.StyleSelected = MapOptions.StadiumCar;
+            TrafficCarQuad.StyleSelected = MapOptions.TrafficCar;
+            FlippyCarQuad.StyleSelected = MapOptions.FlippyCar;
             while(True) {
                 yield;
                 foreach(Event in PendingEvents) {
@@ -80,15 +183,71 @@ Text KEKLOptionsUI(){
                             case "Toggle_Effects": {
                                 RandEventsQuad.StyleSelected = !RandEventsQuad.StyleSelected;
                             }
+                            case "Toggle_Size": {
+                                SizeEventsQuad.StyleSelected = !SizeEventsQuad.StyleSelected;
+                            }
                             case "Toggle_Cars": {
                                 RandCarsQuad.StyleSelected = !RandCarsQuad.StyleSelected;
+                            }
+                            case "Toggle_Rally": {
+                                RallyCarQuad.StyleSelected = !RallyCarQuad.StyleSelected;
+                            }
+                            case "Toggle_Snow": {
+                                SnowCarQuad.StyleSelected = !SnowCarQuad.StyleSelected;
+                            }
+                            case "Toggle_Desert": {
+                                DesertCarQuad.StyleSelected = !DesertCarQuad.StyleSelected;
+                            }
+                            case "Toggle_Island": {
+                                IslandCarQuad.StyleSelected = !IslandCarQuad.StyleSelected;
+                            }
+                            case "Toggle_Coast": {
+                                CoastCarQuad.StyleSelected = !CoastCarQuad.StyleSelected;
+                            }
+                            case "Toggle_Bay": {
+                                BayCarQuad.StyleSelected = !BayCarQuad.StyleSelected;
+                            }
+                            case "Toggle_Canyon": {
+                                CanyonCarQuad.StyleSelected = !CanyonCarQuad.StyleSelected;
+                            }
+                            case "Toggle_Valley": {
+                                ValleyCarQuad.StyleSelected = !ValleyCarQuad.StyleSelected;
+                            }
+                            case "Toggle_Lagoon": {
+                                LagoonCarQuad.StyleSelected = !LagoonCarQuad.StyleSelected;
+                            }
+                            case "Toggle_Stadium": {
+                                StadiumCarQuad.StyleSelected = !StadiumCarQuad.StyleSelected;
+                            }
+                            case "Toggle_Traffic": {
+                                TrafficCarQuad.StyleSelected = !TrafficCarQuad.StyleSelected;
+                            }
+                            case "Toggle_Flippy": {
+                                FlippyCarQuad.StyleSelected = !FlippyCarQuad.StyleSelected;
+                            }
+                            case "Toggle_CarSettings": {
+                                SettingsFrame.Visible = !SettingsFrame.Visible;
+                                CarsFrame.Visible = !CarsFrame.Visible;
                             }
                         }	
                     }
                 }
                 MapOptions.LowGravity = LowGravityQuad.StyleSelected;
+                MapOptions.SizeChanges = SizeEventsQuad.StyleSelected;
                 MapOptions.RandEvents = RandEventsQuad.StyleSelected;
                 MapOptions.RandCars = RandCarsQuad.StyleSelected;
+                MapOptions.RallyCar = RallyCarQuad.StyleSelected;
+                MapOptions.SnowCar = SnowCarQuad.StyleSelected;
+                MapOptions.DesertCar = DesertCarQuad.StyleSelected;
+                MapOptions.IslandCar = IslandCarQuad.StyleSelected;
+                MapOptions.CoastCar = CoastCarQuad.StyleSelected;
+                MapOptions.BayCar = BayCarQuad.StyleSelected;
+                MapOptions.CanyonCar = CanyonCarQuad.StyleSelected;
+                MapOptions.ValleyCar = ValleyCarQuad.StyleSelected;
+                MapOptions.LagoonCar = LagoonCarQuad.StyleSelected;
+                MapOptions.StadiumCar = StadiumCarQuad.StyleSelected;
+                MapOptions.TrafficCar = TrafficCarQuad.StyleSelected;
+                MapOptions.FlippyCar = FlippyCarQuad.StyleSelected;
                 MapOptions.RoundLimit = TL::ToInteger(RoundLimitEnt.Value);
             }
         }
@@ -100,23 +259,73 @@ Text KEKLOptionsUI(){
 main() {
     declare metadata Boolean LowGravity for Map;
     declare metadata Boolean RandEvents for Map;
+    declare metadata Boolean SizeChanges for Map;
     declare metadata Boolean RandCars for Map;
+    declare metadata Integer EffectVersion for Map;
     declare metadata Integer RoundLimit for Map;
+    declare metadata Boolean[Integer] EnabledCars for Map;
+    
+    switch (EffectVersion){
+        case 0: {
+            // update from 0
+            if (RandEvents) {
+                SizeChanges = True;
+            }
+            // setup new map
+			EnabledCars = DefaultCars;
+            EffectVersion = ScriptVersion;
+			}
+    }
+    // Set Defaults or fix invalid
+    if (CarsToText(EnabledCars) == CarsToText(InvalidCars)){
+        EnabledCars = DefaultCars;
+    }
     if (RoundLimit == 0) {
         RoundLimit = -1;
     }
+    // Setup and sync settings to UI
     OptionsLayer = UILayerCreate();
     declare K_KEKLOptions MapOptions for OptionsLayer.LocalPage;
     MapOptions.RandCars = RandCars;
     MapOptions.LowGravity = LowGravity;
     MapOptions.RandEvents = RandEvents;
+	MapOptions.SizeChanges = SizeChanges;
     MapOptions.RoundLimit = RoundLimit;
+    MapOptions.StadiumCar = EnabledCars[0];
+    MapOptions.CanyonCar = EnabledCars[1];
+    MapOptions.ValleyCar = EnabledCars[2];
+    MapOptions.LagoonCar = EnabledCars[3];
+    MapOptions.DesertCar = EnabledCars[4];
+    MapOptions.RallyCar = EnabledCars[5];
+    MapOptions.SnowCar = EnabledCars[6];
+    MapOptions.CoastCar = EnabledCars[7];
+    MapOptions.IslandCar = EnabledCars[8];
+    MapOptions.BayCar = EnabledCars[9];
+    MapOptions.TrafficCar = EnabledCars[10];
+    MapOptions.FlippyCar = EnabledCars[11];
     OptionsLayer.ManialinkPage = KEKLOptionsUI();
     while (True) {
+        // Sync settings from UI
         yield;
+        if (CarsToText(EnabledCars) == CarsToText(InvalidCars)){
+            EnabledCars = DefaultCars;
+        }
         RandCars = MapOptions.RandCars;
         LowGravity = MapOptions.LowGravity;
+        SizeChanges = MapOptions.SizeChanges;
         RandEvents = MapOptions.RandEvents;
         RoundLimit = MapOptions.RoundLimit;
+        EnabledCars[0] = MapOptions.StadiumCar;
+        EnabledCars[1] = MapOptions.CanyonCar;
+        EnabledCars[2] = MapOptions.ValleyCar;
+        EnabledCars[3] = MapOptions.LagoonCar;
+        EnabledCars[4] = MapOptions.DesertCar;
+        EnabledCars[5] = MapOptions.RallyCar;
+        EnabledCars[6] = MapOptions.SnowCar;
+        EnabledCars[7] = MapOptions.CoastCar;
+        EnabledCars[8] = MapOptions.IslandCar;
+        EnabledCars[9] = MapOptions.BayCar;
+        EnabledCars[10] = MapOptions.TrafficCar;
+        EnabledCars[11] = MapOptions.FlippyCar;
     }
 }
