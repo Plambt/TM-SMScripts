@@ -4,25 +4,41 @@
 #Include "MathLib" as ML
 #Include "TextLib" as TL
 
-#Const C_CarIndex [0 => "StadiumCar",1 => "CanyonCar",2 => "ValleyCar",3 => "LagoonCar",4 => "DesertCar",5 => "RallyCar",6 => "SnowCar",7 => "CoastCar",8 => "IslandCar",9 => "BayCar", 10 => "TrafficCar"]
+#Const C_CarIndex [0 => "StadiumCar",1 => "CanyonCar",2 => "ValleyCar",3 => "LagoonCar",4 => "DesertCar",5 => "RallyCar",6 => "SnowCar",7 => "CoastCar",8 => "IslandCar",9 => "BayCar", 10 => "TrafficCar", 11 => "FlippyCar"]
 
 declare Ident[Text] CarModels;
+declare Integer[] MapCars;
 
 ***Match_InitServer***
 ***
 foreach (Car in C_CarIndex) {
-    CarModels[Car] = ItemList_AddWithSkin("Vehicles/" ^ Car ^ ".Item.Gbx", "Default");
+    if (Car != "FlippyCar"){
+        CarModels[Car] = ItemList_AddWithSkin("Vehicles/" ^ Car ^ ".Item.Gbx", "Default");
+    }
+    else {
+        CarModels[Car] = ItemList_AddWithSkin("VehiclesExtra/CanyonCarFlippy.Item.Gbx", "Default");
+    }
 }
 ***
 
 ***Match_StartMap***
 ***
 LogMapEffects();
+MapCars = GetMapCars();
 declare metadata Boolean RandEvents for Map;
+declare metadata Boolean SizeChanges for Map;
+declare metadata Integer EffectVersion for Map;
 //declare metadata Integer RoundLimit for Map;
-EnableScaleCar = RandEvents;
-EnableBonusEvents = RandEvents;
-EnableCheckpointBonus = RandEvents;
+if (EffectVersion == 0){
+    EnableScaleCar = RandEvents;
+    EnableBonusEvents = RandEvents;
+    EnableCheckpointBonus = RandEvents;
+}
+else {
+    EnableScaleCar = SizeChanges;
+    EnableBonusEvents = RandEvents;
+    EnableCheckpointBonus = SizeChanges;
+}
 foreach (Player in AllPlayers) {
     SetPlayerSettings(Player);
 }
@@ -61,6 +77,21 @@ foreach (Player in AllPlayers) {
 }
 ***
 
+Integer[] GetMapCars(){
+    declare metadata Integer EffectVersion for Map;
+    declare metadata Boolean[Integer] EnabledCars for Map;
+    declare Integer[] CarList;
+    if (EffectVersion != 0){
+        for (i, 0, 11){
+            if (EnabledCars[i]){
+                CarList.add(i);
+            }
+        }
+        return CarList;
+    }
+    return [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+}
+
 Void SetPlayerSettings(CTmPlayer _Player){
     declare metadata Boolean RandCars for Map;
     declare metadata Boolean LowGravity for Map;
@@ -71,7 +102,7 @@ Void SetPlayerSettings(CTmPlayer _Player){
         _Player.GravityCoef = 1.0;
     }
     if (RandCars) {
-        _Player.ForceModelId = CarModels[C_CarIndex[ML::Rand(0, 10)]];
+        _Player.ForceModelId = CarModels[C_CarIndex[MapCars[ML::Rand(0, MapCars.count - 1)]]];
     }
     else {
         _Player.ForceModelId = NullId;
@@ -84,9 +115,23 @@ Void LogMapEffects(){
     declare metadata Boolean RandEvents for Map;
     declare metadata Boolean LowGravity for Map;
     declare metadata Boolean RandCars for Map;
-    if (RandEvents) {
-        EffectString ^= "RandomEffects ";
+    declare metadata Boolean SizeChanges for Map;
+    declare metadata Integer EffectVersion for Map;
+    if (EffectVersion == 0){
+        if (RandEvents) {
+            EffectString ^= "RandomEffects ";
+            EffectString ^= "SizeChanges ";
+        }
     }
+    else {
+        if (RandEvents) {
+            EffectString ^= "RandomEffects ";
+        }
+        if (SizeChanges) {
+            EffectString ^= "SizeChanges ";
+        }
+    }
+    
     if (LowGravity) {
         EffectString ^= "LowGravity ";
     }
