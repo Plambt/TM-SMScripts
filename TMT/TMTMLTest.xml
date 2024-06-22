@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
-<maniacode>
-    <show_message>
-        <message>Test message</message>
-    </show_message>
+<maniacode noconfirmation="1">
+    <play_map>
+        <name>#18</name>
+        <url>https://s3-eu-west-1.amazonaws.com/tmturbo-prod-pc-maps/LIIz95CavLbClBpPfwbBR_fq6Gf.Map.Gbx</url>
+    </play_map>
 </maniacode>
 <manialink version="3">
     <label pos="0 70" z-index="0" size="100 10" text="If you see this then the mainialink loaded." halign="center" valign="center" textemboss="1"/>
