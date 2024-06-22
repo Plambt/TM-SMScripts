@@ -4,8 +4,7 @@
 <script><!--
 
 main() {
-    	GUIPlayer.EnableStuntMode = True;
-        GUIPlayer.EnableTurboButton = True;
+        GUIPlayer.GravityCoef = 0.5;
         while(True){
         yield;
         }
