@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <manialink version="3">
-    <label pos="0 80" z-index="1" size="50 10" text="Current Effect:" halign="center" valign="center" textemboss="1"/>
-<label pos="0 70" z-index="0" size="100 10" text="If you see this then the mainialink loaded." halign="center" valign="center" textemboss="1"/>
-<script><!--
-//#RequireContext CMlScriptIngame
-
-main() {
-    log(This);
-}
---></script>
+    <label pos="0 70" z-index="0" size="100 10" text="If you see this then the mainialink loaded." halign="center" valign="center" textemboss="1"/>
+    <script><!--
+    //#RequireContext CTmMlScriptIngame
+    
+    main() {
+        log(This);
+    }
+    --></script>
 </manialink>
