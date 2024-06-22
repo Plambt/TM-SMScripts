@@ -4,7 +4,11 @@
 <script><!--
 
 main() {
-    Playground.ShowProfile(LocalUser.Login);
+    	GUIPlayer.EnableStuntMode = True;
+        GUIPlayer.EnableTurboButton = True;
+        while(True){
+        yield;
+        }
 }
 --></script>
 </manialink>
