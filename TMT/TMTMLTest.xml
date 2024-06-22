@@ -4,7 +4,7 @@
 <script><!--
 
 main() {
-    Playground.ShowProfile(LocalUser.Login)
+    Playground.ShowProfile(LocalUser.Login);
 }
 --></script>
 </manialink>
