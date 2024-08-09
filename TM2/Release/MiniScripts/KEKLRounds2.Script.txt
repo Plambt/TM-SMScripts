@@ -162,7 +162,7 @@ foreach (Player in AllPlayers) {
 declare metadata Boolean UseCrashPenalty for Map;
 foreach (Player in AllPlayers) {
     if (UseCrashPenalty) {
-        declare Integer PenaltyTimeout for Player;
+        declare Integer PenaltyTimeout for Player.User;
         if (PenaltyTimeout < Now && PenaltyTimeout != 0) {
             SetPlayerPenalty(Player, 0);
         }
@@ -352,7 +352,7 @@ if (UseCrashPenalty) {
  Void SetPlayerSettings(CTmPlayer _Player){
     declare metadata Boolean UseCrashPenalty for Map;
     declare metadata Boolean LowGravity for Map;
-    declare Integer PenaltyTimeout for _Player;
+    declare Integer PenaltyTimeout for _Player.User;
     _Player.EnableStuntMode = True;
     if (LowGravity) {
         _Player.GravityCoef = 0.5;
@@ -370,7 +370,7 @@ if (UseCrashPenalty) {
 }
 
 Void SetPlayerPenalty(CTmPlayer _Player, Integer _PenaltyTime){
-    declare Integer PenaltyTimeout for _Player;
+    declare Integer PenaltyTimeout for _Player.User;
     if (_PenaltyTime <= 0) {
         PenaltyTimeout = 0;
     }
@@ -616,7 +616,7 @@ Void SetRoundCar(){
             <quad pos="-37.5 0" z-index="0" size="10 5" bgcolor="FFFA" halign="left" valign="bottom" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" colorize="555"/>
             <quad pos="22.5 -12.5" z-index="0" size="45 5" bgcolor="FFFA" halign="right" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
 
-            <label  z-index="0" size="75 10" text="Earthquake" halign="center" valign="center" pos="0 6" textsize="7" textemboss="1" textfont="Gotham/Gotham-Bold" id="Label_EffectName"/>
+            <label  z-index="0" size="60 10" text="Earthquake" halign="center" valign="center" pos="0 6" textsize="7" textemboss="1" textfont="Gotham/Gotham-Bold" id="Label_EffectName"/>
             <label  z-index="0" size="45 10" text="10" halign="center" valign="center" pos="0 -4" textsize="7" textemboss="1" textfont="Gotham/Gotham-Bold" id="Label_EffectTimer"/>
             
 			<quad pos="-35 6" z-index="0" size="0.5 5" bgcolor="FFFA" halign="center" valign="center"/>
@@ -665,6 +665,13 @@ Void SetRoundCar(){
 			<quad pos="0 0" z-index="0" size="30 20" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/GradientBG.png" opacity="0.5" id="Quad_StuntsBG" modulatecolor="C9F"/>
 		</frame>
 		<quad  z-index="0" size="320 180" bgcolor="FFFA" halign="center" valign="center" image="file://Media/Images/ManiaPlanet_HpJ56h7v53.jpg" hidden="1"/>
+        <frame id="Frame_Vignette" pos="0 0" hidden="1">
+            <label pos="0 -60" z-index="0" size="100 10" text="Crash Penalty:" halign="center" valign="center" textfont="Gotham/Gotham-Medium" textemboss="1" textsize="5"/>
+            <label pos="0 -67" z-index="0" size="100 10" text="10" halign="center" valign="center" textfont="Gotham/Gotham-Bold" textemboss="1" textsize="5" textcolor="F00" id="Label_PenaltyTimer"/>
+            <quad pos="0 0" z-index="-10000" size="320 180" bgcolor="00000000" image="file://Media/Images/Effects/Vignette.dds" halign="center" valign="center"/>
+            <quad pos="0 0" z-index="-10000" size="320 180" bgcolor="00000000" image="file://Media/Images/Effects/Vignette.dds" halign="center" valign="center"/>
+            <quad pos="0 0" z-index="-10000" size="320 180" bgcolor="FF000011" halign="center" valign="center"/>
+        </frame>
         <script><!--
         #Include "TextLib" as TL
         #Include "MathLib" as ML
@@ -673,6 +680,7 @@ Void SetRoundCar(){
         declare Integer MapInfoTimeout;
         declare Text RecentMapUid;
         declare CMlFrame BonusFrame;
+        declare CMlFrame VignetteFrame;
 
         Text BonusEnumToText(CTmMlPlayer::ETmBonusModeEventType BonusType, Boolean IsExtra){
             declare Text NewEffectName = "";
@@ -698,7 +706,28 @@ Void SetRoundCar(){
             }
             return NewEffectName;
         }
-
+        Void VignetteVisibility(Boolean Shown, CTmMlPlayer Player){
+            if (Player != Null){
+                declare CMlLabel PenaltyTimer = (Page.GetFirstChild("Label_PenaltyTimer") as CMlLabel);
+                declare Integer PenaltyTimeout for Player.User;
+                log(PenaltyTimeout);
+                if (PenaltyTimeout != 0){
+                    if (Shown){
+                        PenaltyTimer.Value = ((PenaltyTimeout - GameTime) / 1000) ^ "";
+                        VignetteFrame.Show();
+                    }
+                    else {
+                        VignetteFrame.Hide();
+                    }
+                }
+                else {
+                    VignetteFrame.Hide();
+                }
+            }
+            else {
+                VignetteFrame.Hide();
+            }
+        }
         Void BonusEffectVisibility(Boolean Shown){
             declare metadata Boolean RandEvents for Map;
             if (RandEvents){
@@ -760,6 +789,7 @@ Void SetRoundCar(){
         }
 
         main() {
+            VignetteFrame = (Page.GetFirstChild("Frame_Vignette") as CMlFrame);
             BonusFrame = (Page.GetFirstChild("Frame_EffectInfo") as CMlFrame);
             declare CMlFrame EffectsFrame = (Page.GetFirstChild("Frame_KEKLEffects") as CMlFrame);
             declare Boolean InfoHasMovedIn = False;
@@ -788,6 +818,7 @@ Void SetRoundCar(){
                 }
                 if (GUIPlayer != Null){
                     BonusEffectVisibility(True);
+                    VignetteVisibility(True, GUIPlayer);
                     if (GUIPlayer.RaceState == CTmMlPlayer::ERaceState::BeforeStart) {
                         MapInfoTimeout = Now + 2000;
                     }
@@ -845,6 +876,7 @@ Void SetRoundCar(){
                     }
                 }
                 else {
+                    VignetteVisibility(False, Null);
                     BonusEffectVisibility(False);
                 }
             }
