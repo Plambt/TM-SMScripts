@@ -710,7 +710,6 @@ Void SetRoundCar(){
             if (Player != Null){
                 declare CMlLabel PenaltyTimer = (Page.GetFirstChild("Label_PenaltyTimer") as CMlLabel);
                 declare Integer PenaltyTimeout for Player.User;
-                log(PenaltyTimeout);
                 if (PenaltyTimeout != 0){
                     if (Shown){
                         PenaltyTimer.Value = ((PenaltyTimeout - GameTime) / 1000) ^ "";
