@@ -112,7 +112,7 @@ if (EffectVersion == 0){
 else {
     EnableScaleCar = SizeChanges;
     EnableBonusEvents = RandEvents;
-    EnableCheckpointBonus = SizeChanges;
+    EnableCheckpointBonus = (SizeChanges || RandEvents);
 }
 MapCars = GetMapCars();
 UsedCars.clear();
@@ -595,6 +595,49 @@ Void SetRoundCar(){
     Layer.ManialinkPage = """
     <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 	<manialink version="3">
+        <frame id="Frame_EffectInfo" pos="0 80">
+            <quad pos="25 -12.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" rot="-90" colorize="555"/>
+            <quad pos="40 -2.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" rot="-90" colorize="555"/>
+            <quad pos="25 -7.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
+            <quad pos="40 5" z-index="0" size="5 10" bgcolor="FFFA" halign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555" valign="center"/>
+            <quad pos="37.5 -2.5" z-index="0" size="10 5" bgcolor="FFFA" halign="right" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
+            <quad pos="20 -7.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" rot="-90" colorize="555"/>
+            <quad pos="25 -2.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" rot="90" colorize="555"/>
+            <quad pos="27.5 -5" z-index="0" size="5 10" bgcolor="FFFA" halign="left" valign="bottom" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" rot="90" colorize="555"/>
+            <quad pos="37.5555 1.1e-07" z-index="0" size="5 10" bgcolor="FFFA" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" rot="-90" halign="left" valign="bottom" colorize="555"/>
+            <quad pos="-25 -12.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" colorize="555"/>
+            <quad pos="-40 -2.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" colorize="555"/>
+            <quad pos="-25 -7.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
+            <quad pos="-40 5" z-index="0" size="5 10" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
+            <quad pos="-37.5 -2.5" z-index="0" size="10 5" bgcolor="FFFA" valign="center" halign="left" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
+            <quad pos="-20 -7.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" colorize="555"/>
+            <quad pos="-25 -2.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" rot="-180" colorize="555"/>
+            <quad pos="-27.5 -5" z-index="0" size="10 5" bgcolor="FFFA" halign="left" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" rot="-180" valign="bottom" colorize="555"/>
+            <quad pos="-37.5 0" z-index="0" size="10 5" bgcolor="FFFA" halign="left" valign="bottom" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" colorize="555"/>
+            <quad pos="22.5 -12.5" z-index="0" size="45 5" bgcolor="FFFA" halign="right" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
+
+            <label  z-index="0" size="75 10" text="Earthquake" halign="center" valign="center" pos="0 6" textsize="7" textemboss="1" textfont="Gotham/Gotham-Bold" id="Label_EffectName"/>
+            <label  z-index="0" size="45 10" text="10" halign="center" valign="center" pos="0 -4" textsize="7" textemboss="1" textfont="Gotham/Gotham-Bold" id="Label_EffectTimer"/>
+            
+			<quad pos="-35 6" z-index="0" size="0.5 5" bgcolor="FFFA" halign="center" valign="center"/>
+			<quad pos="-33 6" z-index="0" size="0.5 3" bgcolor="FFFA" halign="center" valign="center"/>
+            <quad pos="-31 6" z-index="0" size="0.5 7" bgcolor="FFFA" halign="center" valign="center"/>
+			<quad pos="35 6" z-index="0" size="0.5 5" bgcolor="FFFA" halign="center" valign="center"/>
+			<quad pos="33 6" z-index="0" size="0.5 3" bgcolor="FFFA" halign="center" valign="center"/>
+            <quad pos="31 6" z-index="0" size="0.5 7" bgcolor="FFFA" halign="center" valign="center"/>
+			
+			<quad pos="-20 -5" z-index="0" size="0.5 5" bgcolor="FFFA" halign="center" valign="center"/>
+			<quad pos="-18 -5" z-index="0" size="0.5 3" bgcolor="FFFA" halign="center" valign="center"/>
+			<quad pos="-16 -5" z-index="0" size="0.5 1" bgcolor="FFFA" halign="center" valign="center"/>
+			<quad pos="-14.3 -5" z-index="0" size="5 0.5" bgcolor="FFFA" halign="left" valign="center"/>
+			<quad pos="20 -5" z-index="0" size="0.5 5" bgcolor="FFFA" halign="center" valign="center"/>
+			<quad pos="18 -5" z-index="0" size="0.5 3" bgcolor="FFFA" halign="center" valign="center"/>
+			<quad pos="16 -5" z-index="0" size="0.5 1" bgcolor="FFFA" halign="center" valign="center"/>
+			<quad pos="11.8 -5" z-index="0" size="5 0.5" bgcolor="FFFA" halign="center" valign="center"/>
+			
+            <quad pos="0 10" z-index="0" size="75 12" bgcolor="555A" halign="center" valign="top"/>
+            <quad pos="0 -10" z-index="0" size="50 8" bgcolor="555A" halign="center" valign="bottom"/>
+        </frame>
 		<frame id="Frame_KEKLEffects" pos="-45 -110" scale="1.0">
 			<label pos="0 9" z-index="0" size="50 10" text="Map Effects" halign="center" valign="center" textfont="Gotham/Gotham-Bold" textemboss="1" textsize="5"/>
 			<label pos="0 3.5" z-index="0" size="47 13" text="Effect1, Effect2, Effect3, Effect4, Effect5" halign="center" textfont="Gotham/Gotham-Medium" textemboss="1" textsize="1.5" autonewline="1" id="Label_EffectList" valign="top"/>
@@ -624,9 +667,52 @@ Void SetRoundCar(){
 		<quad  z-index="0" size="320 180" bgcolor="FFFA" halign="center" valign="center" image="file://Media/Images/ManiaPlanet_HpJ56h7v53.jpg" hidden="1"/>
         <script><!--
         #Include "TextLib" as TL
+        #Include "MathLib" as ML
+        #Include "ColorLib" as CL
         declare CMlLabel MapSettings;
         declare Integer MapInfoTimeout;
         declare Text RecentMapUid;
+        declare CMlFrame BonusFrame;
+
+        Text BonusEnumToText(CTmMlPlayer::ETmBonusModeEventType BonusType, Boolean IsExtra){
+            declare Text NewEffectName = "";
+            switch (BonusType){
+                case CTmMlPlayer::ETmBonusModeEventType::Bumps: {
+                    NewEffectName = "Earthquake";
+                }
+                case CTmMlPlayer::ETmBonusModeEventType::LowGravity: {
+                    NewEffectName = "Levitation";
+                }
+                case CTmMlPlayer::ETmBonusModeEventType::FreeWheeling: {
+                    NewEffectName = "FreeWheeling";
+                }
+                case CTmMlPlayer::ETmBonusModeEventType::LockedDirections: {
+                    NewEffectName = "NoSteering";
+                }
+                default: {
+                    NewEffectName = "None";
+                }
+            }
+            if (IsExtra){
+                NewEffectName = NewEffectName ^ " +";
+            }
+            return NewEffectName;
+        }
+
+        Void BonusEffectVisibility(Boolean Shown){
+            declare metadata Boolean RandEvents for Map;
+            if (RandEvents){
+                if (Shown){
+                    BonusFrame.Show();
+                }
+                else {
+                    BonusFrame.Hide();
+                }
+            }
+            else {
+                BonusFrame.Hide();
+            }
+        }
 
         Void UpdateEffectPage(){
             declare Text[] EffectNames;
@@ -674,10 +760,13 @@ Void SetRoundCar(){
         }
 
         main() {
+            BonusFrame = (Page.GetFirstChild("Frame_EffectInfo") as CMlFrame);
             declare CMlFrame EffectsFrame = (Page.GetFirstChild("Frame_KEKLEffects") as CMlFrame);
             declare Boolean InfoHasMovedIn = False;
             declare Text EventType;
             MapSettings = (Page.GetFirstChild("Label_EffectList") as CMlLabel);
+            declare CMlLabel BonusName = (Page.GetFirstChild("Label_EffectName") as CMlLabel);
+            declare CMlLabel BonusTimer = (Page.GetFirstChild("Label_EffectTimer") as CMlLabel);
             MapInfoTimeout = -1;
             while(True) {
                 yield;
@@ -698,9 +787,32 @@ Void SetRoundCar(){
                     InfoHasMovedIn = False;
                 }
                 if (GUIPlayer != Null){
+                    BonusEffectVisibility(True);
                     if (GUIPlayer.RaceState == CTmMlPlayer::ERaceState::BeforeStart) {
                         MapInfoTimeout = Now + 2000;
                     }
+
+                    if (GUIPlayer.RaceState == CTmMlPlayer::ERaceState::Running) {
+                        BonusName.Value = BonusEnumToText(GUIPlayer.BonusModeEventType, GUIPlayer.BonusModeEventIsGold);
+                        if (GUIPlayer.BonusModeTimeTillEvent <= 6000 && GUIPlayer.BonusModeTimeTillEvent != 0){
+                            BonusTimer.TextColor = CL::HexToRgb("F22");
+                            BonusTimer.Value = (GUIPlayer.BonusModeTimeTillEvent / 1000) ^ "";
+                        }
+                        else if (GUIPlayer.BonusModeTimeTillEvent == 0){
+                            BonusTimer.TextColor = CL::HexToRgb("F90");
+                            BonusTimer.Value = (GUIPlayer.BonusModeTimeTillEndEvent / 1000) ^ "";
+                        }
+                        else {
+                            BonusTimer.TextColor = CL::HexToRgb("FFF");
+                            BonusTimer.Value = (GUIPlayer.BonusModeTimeTillEvent / 1000) ^ "";
+                        }
+                    }
+                    else {
+                        BonusName.Value = "Starting";
+                        BonusTimer.TextColor = CL::HexToRgb("FFF");
+                        BonusTimer.Value = "...";
+                    }
+
                     foreach (Event in RaceEvents) {
                         if (Event.Player == GUIPlayer) {
                             switch (Event.Type) {
@@ -731,6 +843,9 @@ Void SetRoundCar(){
                             }
                         }
                     }
+                }
+                else {
+                    BonusEffectVisibility(False);
                 }
             }
         }
