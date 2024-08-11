@@ -775,7 +775,7 @@ Void SetRoundCar(){
                     else {
                         declare Text CurYummer for Teams[0];
                         declare Integer NextYumm for Teams[0];
-                        EffectData.EffectName = "$" ^ CurYummer ^ "Starting";
+                        EffectData.EffectName = "$" ^ CurYummer ^ "Please Wait";
                         EffectData.EffectTime = "$" ^ CurYummer ^ "...";
                         if (Now >= NextYumm){
                             if (CurYummer == ""){
