@@ -32,14 +32,27 @@
 #Const C_BotsNb 0
 #Const C_HudModulePath "Nadeo/TrackMania/Rounds/Hud.Module.Gbx" ///< Path to the hud module
 #Const C_ManiaAppUrl "file://Media/ManiaApps/Nadeo/TrackMania/Rounds/Rounds.Script.txt"
+#Const C_BaseStuntWorth 30
+#Const C_SimpleStuntWorth 15
+#Const C_WreckStuntWorth 5
+#Const C_RotationalStuntBonus 15
 #Const C_CarIndex [0 => "StadiumCar",1 => "CanyonCar",2 => "ValleyCar",3 => "LagoonCar",4 => "DesertCar",5 => "RallyCar",6 => "SnowCar",7 => "CoastCar",8 => "IslandCar",9 => "BayCar", 10 => "TrafficCar", 11 => "FlippyCar"]
 
 #Const Description _("""$fffA moddified version of Nadeo's rounds script which allows mappers to add (usually) fun effects to their maps!!!""")
+
+#Struct NetStuntData{
+    Text StuntName;
+    Integer StuntScore;
+    Integer StuntTime;
+}
 
 declare Integer[] UsedCars;
 declare Integer[] MapCars;
 declare Ident[Text] CarModels;
 declare Ident RoundCar;
+declare Vec3[Integer] RandFinList;
+declare Vec3 PreviousFirstFin;
+declare CUILayer FinishMarker;
 
 // ---------------------------------- //
 // Extends
@@ -75,19 +88,20 @@ declare PrevPointsLimit = S_PointsLimit - 1;
 declare PrevRoundsPerMap = S_RoundsPerMap - 1;
 declare PrevMapsPerMatch = S_MapsPerMatch - 1;
 foreach (Car in C_CarIndex) {
-   if (Car != "FlippyCar"){
-       CarModels[Car] = ItemList_AddWithSkin("Vehicles/" ^ Car ^ ".Item.Gbx", "Default");
-   }
-   else {
-       CarModels[Car] = ItemList_AddWithSkin("VehiclesExtra/CanyonCarFlippy.Item.Gbx", "Default");
-   }
-   
+if (Car != "FlippyCar"){
+CarModels[Car] = ItemList_AddWithSkin("Vehicles/" ^ Car ^ ".Item.Gbx", "Default");
+}
+else {
+CarModels[Car] = ItemList_AddWithSkin("VehiclesExtra/CanyonCarFlippy.Item.Gbx", "Default");
+}
+
 }
 ***
 
 ***Match_StartServer***
 ***
 InitKEKUiLayer();
+SetupGlobalFinishMarker();
 WarmUp::SetAvailability(True);
 ChannelProgression::Enable(S_IsChannelServer);
 Scores::SaveInScore(Scores::C_Points_Match);
@@ -104,22 +118,25 @@ UpdateScoresTableFooter(S_PointsLimit, S_RoundsPerMap, S_MapsPerMatch);
 declare metadata Boolean RandEvents for Map;
 declare metadata Boolean SizeChanges for Map;
 declare metadata Integer EffectVersion for Map;
+
 if (EffectVersion == 0){
-   EnableScaleCar = RandEvents;
-   EnableBonusEvents = RandEvents;
-   EnableCheckpointBonus = RandEvents;
+EnableScaleCar = RandEvents;
+EnableBonusEvents = RandEvents;
+EnableCheckpointBonus = RandEvents;
 }
 else {
-   EnableScaleCar = SizeChanges;
-   EnableBonusEvents = RandEvents;
-   EnableCheckpointBonus = (SizeChanges || RandEvents);
+EnableScaleCar = SizeChanges;
+EnableBonusEvents = RandEvents;
+EnableCheckpointBonus = (SizeChanges || RandEvents);
 }
 MapCars = GetMapCars();
 UsedCars.clear();
 RoundCar = NullId;
 foreach (Player in AllPlayers) {
-   SetPlayerSettings(Player);
+SetPlayerSettings(Player);
 }
+
+FinishMarker.IsVisible = False;
 
 
 // ---------------------------------- //
@@ -134,146 +151,188 @@ MB_WarmUp(S_WarmUpNb, WarmUpDuration);
 // ---------------------------------- //
 // Restore score from previous map
 foreach (Score in Scores) {
-    declare Real[] Rounds_RoundsPerformance for Score;
-    Rounds_RoundsPerformance = [];
+declare Real[] Rounds_RoundsPerformance for Score;
+Rounds_RoundsPerformance = [];
 }
 ***
 
 ***Match_InitRound***
 ***
 declare metadata Boolean RandCars for Map;
+declare metadata Boolean RandomFinishes for Map;
 RoundCar = NullId;
 if (RandCars) {
-  SetRoundCar();
+SetRoundCar();
 }
+RandFinList.clear();
+if (RandomFinishes){
+    RandFinList = GetRandomFinArray();
+}
+
 foreach (Player in AllPlayers) {
-   SetPlayerPenalty(Player, 0);
-   SetPlayerSettings(Player);
+SetupFinishMarkerForPlayer(Player);
+declare netwrite Integer ScriptedStuntPoints for Player.Score;
+ScriptedStuntPoints = 0;
+SetPlayerPenalty(Player, 0, False);
+SetPlayerSettings(Player);
+}
+foreach(Score in Scores){
+    declare Boolean EndedOnWrongFinish for Score;
+    declare Boolean ObtainedStuntBonus for Score;
+    EndedOnWrongFinish = False;
+    ObtainedStuntBonus = False;
 }
 ***
 
 ***Match_StartRound***
 ***
+declare metadata Boolean IncStuntPoints for Map;
+declare metadata Integer EffectVersion for Map;
 UpdateScoresTableFooter(S_PointsLimit, S_RoundsPerMap, S_MapsPerMatch);
+/*      Will see how things play out without this.
+if (IncStuntPoints && EffectVersion >= 2){
+    CutOffTimeLimit = Now + (Map.TMObjective_AuthorTime + 33000);
+}
+*/
 ***
 
 ***Match_PlayLoop***
 ***
 declare metadata Boolean UseCrashPenalty for Map;
+declare metadata Boolean IncStuntPoints for Map;
+declare metadata Boolean RandomFinishes for Map;
 foreach (Player in AllPlayers) {
-   if (UseCrashPenalty) {
-       declare Integer PenaltyTimeout for Player.User;
-       if (PenaltyTimeout < Now && PenaltyTimeout != 0) {
-           SetPlayerPenalty(Player, 0);
-       }
-   }
-   SetPlayerSettings(Player);
+    declare Integer PenaltyTimeout for Player.User;
+    if (PenaltyTimeout < Now && PenaltyTimeout != 0) {
+        SetPlayerPenalty(Player, 0, True);
+    }
+SetPlayerSettings(Player);
 }
 if (UseCrashPenalty) {
-   foreach (UiEvent in UIManager.PendingEvents) {
-       switch (UiEvent.CustomEventType) {
-           case "RaceEvent": {
-               declare CTmPlayer UiEventPlayer = GetPlayer(UiEvent.CustomEventData[1]);
-               switch (UiEvent.CustomEventData[0]) {
-                   case "Impact": {
-                       SetPlayerPenalty(UiEventPlayer, 3000);
-                   }
-               }
-           }
-       }
-   }
+foreach (UiEvent in UIManager.PendingEvents) {
+switch (UiEvent.CustomEventType) {
+    case "RaceEvent": {
+        declare CTmPlayer UiEventPlayer = GetPlayer(UiEvent.CustomEventData[1]);
+        switch (UiEvent.CustomEventData[0]) {
+            case "Impact": {
+                SetPlayerPenalty(UiEventPlayer, 2000, True);
+            }
+        }
+    }
+}
+}
 }
 foreach (Event in PendingEvents) {
-    declare Processed = Events::Valid(Event);
-    if (!Processed) continue;
-    switch (Event.Type) {
-       case CTmModeEvent::EType::WayPoint: {
-        SetPlayerPenalty(Event.Player, 0);
-           if (Event.IsEndRace) {
-               declare Better = Scores::SetPlayerBestRaceIfBetter(Event.Player.Score, Event.Player.CurRace, CTmResult::ETmRaceResultCriteria::Time);
-               Scores::SetPlayerPrevRace(Event.Player.Score, Event.Player.CurRace);
-               ComputeLatestRaceScores();
-               MB_SortScores(CTmMode::ETmScoreSortOrder::TotalPoints);
-               TM::EndRace(Event.Player);
-               if (S_TurboFinishTime) {
-                  CutOffTimeLimit = GetFinishTimeout();
-               }
-               else if (CutOffTimeLimit <= 0) {
-                   CutOffTimeLimit = GetFinishTimeout();
-               }
-           }
-           if (Event.IsEndLap) {
-               declare Better = Scores::SetPlayerBestLapIfBetter(Event.Player.Score, Event.Player.CurLap, CTmResult::ETmRaceResultCriteria::Time);
-           }
-       }
-       case CTmModeEvent::EType::Respawn: {
-        SetPlayerPenalty(Event.Player, 0);
-       }
-       case CTmModeEvent::EType::GiveUp: {
-           TM::WaitRace(Event.Player);
-       }
-       case CTmModeEvent::EType::OnPlayerAdded: {
-           if (Event.Player != Null) {
-               SetPlayerSettings(Event.Player);
-           }
-       }
+declare Processed = Events::Valid(Event);
+if (!Processed) continue;
+switch (Event.Type) {
+case CTmModeEvent::EType::WayPoint: {
+    declare Boolean CanSkipPenalty for Event.Player.User;
+    if (CanSkipPenalty){
+        SetPlayerPenalty(Event.Player, 0, False);
     }
+    if (Event.IsEndRace) {
+        if (RandomFinishes && !DidFinishAtTarget(Event.Player.Position, RandFinList[Event.Player.CurrentNbLaps - 1])){
+            declare Boolean EndedOnWrongFinish for Event.Player.Score;
+            EndedOnWrongFinish = True;
+        }
+        declare Better = Scores::SetPlayerBestRaceIfBetter(Event.Player.Score, Event.Player.CurRace, CTmResult::ETmRaceResultCriteria::Time);
+        Scores::SetPlayerPrevRace(Event.Player.Score, Event.Player.CurRace);
+        ComputeLatestRaceScores(False);
+        MB_SortScores(CTmMode::ETmScoreSortOrder::TotalPoints);
+        TM::EndRace(Event.Player);
+        if (S_TurboFinishTime) {
+            CutOffTimeLimit = GetFinishTimeout();
+        }
+        else if (CutOffTimeLimit <= 0) {
+            CutOffTimeLimit = GetFinishTimeout();
+        }
+    }
+    if (Event.IsEndLap) {
+        if (RandomFinishes && !Event.IsEndRace && !DidFinishAtTarget(Event.Player.Position, RandFinList[Event.Player.CurrentNbLaps - 1])){
+            SetPlayerPenalty(Event.Player, 3000, False);
+        }
+        SetupFinishMarkerForPlayer(Event.Player);
+        declare Better = Scores::SetPlayerBestLapIfBetter(Event.Player.Score, Event.Player.CurLap, CTmResult::ETmRaceResultCriteria::Time);
+    }
+}
+case CTmModeEvent::EType::Respawn: {
+    declare Boolean CanSkipPenalty for Event.Player.User;
+    if (CanSkipPenalty){
+        SetPlayerPenalty(Event.Player, 0, False);
+    }
+}
+case CTmModeEvent::EType::GiveUp: {
+    TM::WaitRace(Event.Player);
+}
+case CTmModeEvent::EType::Stunt: {
+    if (IncStuntPoints){
+        RegisterStunt(Event);
+    }
+}
+case CTmModeEvent::EType::OnPlayerAdded: {
+    if (Event.Player != Null) {
+        SetPlayerSettings(Event.Player);
+    }
+}
+}
 }
 
 // ---------------------------------- //
 // Server info change
 if (
-    PrevPointsLimit != S_PointsLimit ||
-    PrevRoundsPerMap != S_RoundsPerMap ||
-    PrevMapsPerMatch != S_MapsPerMatch
+PrevPointsLimit != S_PointsLimit ||
+PrevRoundsPerMap != S_RoundsPerMap ||
+PrevMapsPerMatch != S_MapsPerMatch
 ) {
-    PrevPointsLimit = S_PointsLimit;
-    PrevRoundsPerMap = S_RoundsPerMap;
-    PrevMapsPerMatch = S_MapsPerMatch;
-    
-    UpdateScoresTableFooter(S_PointsLimit, S_RoundsPerMap, S_MapsPerMatch);
+PrevPointsLimit = S_PointsLimit;
+PrevRoundsPerMap = S_RoundsPerMap;
+PrevMapsPerMatch = S_MapsPerMatch;
+
+UpdateScoresTableFooter(S_PointsLimit, S_RoundsPerMap, S_MapsPerMatch);
 }
 ***
 
 ***Match_EndRound***
 ***
+FinishMarker.IsVisible = False;
 TM::WaitRaceAll();
 CutOffTimeLimit = -1;
 
 if (Semver::Compare(XmlRpc::GetApiVersion(), ">=", "2.1.1")) {
-    Scores::XmlRpc_SendScores(Scores::C_Section_PreEndRound, "");
+Scores::XmlRpc_SendScores(Scores::C_Section_PreEndRound, "");
 }
 
 if (ForceEndRound || SkipPauseRound) {
-    // Cancel points
-    foreach (Score in Scores) {
-        Scores::SetPlayerRoundPoints(Score, 0);
-    }
-    // Do not launch the forced end round sequence after a pause
-    if (!SkipPauseRound) {
-        ForcedEndRoundSequence();
-    }
+// Cancel points
+foreach (Score in Scores) {
+    Scores::SetPlayerRoundPoints(Score, 0);
+}
+// Do not launch the forced end round sequence after a pause
+if (!SkipPauseRound) {
+    ForcedEndRoundSequence();
+}
 } else {
-    // Compute round performance
-    declare ReferenceTime = Map.MapInfo.TMObjective_AuthorTime;
-    declare BestRaceTime = ReferenceTime;
-    foreach (Score in Scores) {
-        declare RaceTime = Scores::GetPlayerPrevRaceTime(Score);
-        if (RaceTime > 0 && RaceTime < BestRaceTime) {
-            BestRaceTime = RaceTime;
-        }
+// Compute round performance
+declare ReferenceTime = Map.MapInfo.TMObjective_AuthorTime;
+declare BestRaceTime = ReferenceTime;
+foreach (Score in Scores) {
+    declare RaceTime = Scores::GetPlayerPrevRaceTime(Score);
+    if (RaceTime > 0 && RaceTime < BestRaceTime) {
+        BestRaceTime = RaceTime;
     }
-    if (BestRaceTime > 0 && BestRaceTime < ReferenceTime) ReferenceTime = BestRaceTime;
-        
-    foreach (Score in Scores) {
-        declare RoundPerformance = 0.;
-        declare PrevRaceTime = Scores::GetPlayerPrevRaceTime(Score);
-        
-        if (
-            PrevRaceTime > 0 &&
-            ReferenceTime > 0 &&
-            PrevRaceTime < Map.MapInfo.TMObjective_BronzeTime &&
-            ReferenceTime < Map.MapInfo.TMObjective_BronzeTime
+}
+if (BestRaceTime > 0 && BestRaceTime < ReferenceTime) ReferenceTime = BestRaceTime;
+
+foreach (Score in Scores) {
+    declare RoundPerformance = 0.;
+    declare PrevRaceTime = Scores::GetPlayerPrevRaceTime(Score);
+    
+    if (
+        PrevRaceTime > 0 &&
+        ReferenceTime > 0 &&
+        PrevRaceTime < Map.MapInfo.TMObjective_BronzeTime &&
+        ReferenceTime < Map.MapInfo.TMObjective_BronzeTime
         ) {
             declare A = (Map.MapInfo.TMObjective_BronzeTime - PrevRaceTime) * 1.;
             declare B = Map.MapInfo.TMObjective_BronzeTime - ReferenceTime;
@@ -287,7 +346,7 @@ if (ForceEndRound || SkipPauseRound) {
     }
     
     // Get the last round points
-    ComputeLatestRaceScores();
+    ComputeLatestRaceScores(True);
     MB_SortScores(CTmMode::ETmScoreSortOrder::TotalPoints);
     UIManager.UIAll.ScoreTableVisibility = CUIConfig::EVisibility::ForcedVisible;
     UIManager.UIAll.UISequence = CUIConfig::EUISequence::EndRound;
@@ -308,7 +367,7 @@ if (ForceEndRound || SkipPauseRound) {
 if (MatchIsOver()) MB_StopMatch();
 
 if (!MB_MapIsRunning() && MB_MatchIsRunning()) MB_SkipPodiumSequence();
-    
+
 MB_SortScores(CTmMode::ETmScoreSortOrder::TotalPoints);
 Scores::SetDefaultLadderSort(Scores::C_Sort_MapPoints);
 Scores::SetPlayerWinner(Scores::GetBestPlayer(Scores::C_Sort_MatchPoints, Scores::Order_Descending()));
@@ -335,87 +394,216 @@ if (ChannelProgression::IsEnabled()) {
 }
 ***
 
+Void SetupGlobalFinishMarker(){
+    FinishMarker = UIManager.UILayerCreate();
+    FinishMarker.Type = CUILayer::EUILayerType::Markers;
+    FinishMarker.ManialinkPage = """
+    <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+    <manialink version="3">
+        <frame id="Frame_FinishMarker">
+            <quad pos="0 0" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" style="Icons128x32_1" substyle="RT_Rounds"/>
+            <quad pos="0 0" z-index="0" size="20 20" bgcolor="FFFA" halign="center" valign="center" style="Bgs1InRace" substyle="Glow"/>
+        </frame>
+    </manialink>
+    """;
+    UIManager.UIAll.UILayers.add(FinishMarker);
+}
+
+Void SetupFinishMarkerForPlayer(CTmPlayer _Player){
+    declare metadata Boolean RandomFinishes for Map;
+    if (RandomFinishes){
+        UIManager.UIAll.LabelsVisibility = CUIConfig::EHudVisibility::MarkersOnly;
+        FinishMarker.IsVisible = True;
+        declare CUIConfig PlayerUI = UIManager.GetUI(_Player);
+        declare Integer FinIndex;
+        if (MapIsLapRace){
+            if (_Player.CurrentNbLaps < MapNbLaps){
+                if (_Player.CurrentNbLaps <= 0){
+                    FinIndex = 0;
+                }
+                else {
+                    FinIndex = _Player.CurrentNbLaps;
+                }
+            }
+        }
+        else {
+            FinIndex = 0;
+        }
+        declare Vec3 FinishPosition = RandFinList[FinIndex];
+        PlayerUI.MarkersXML = """<marker pos="{{{FinishPosition.X}}} {{{FinishPosition.Y}}} {{{FinishPosition.Z}}}" manialinkframeid="Frame_FinishMarker"/>""";
+    }
+    else {
+        UIManager.UIAll.LabelsVisibility = CUIConfig::EHudVisibility::Default;
+        FinishMarker.IsVisible = False;
+    }
+    
+}
+
+Boolean DidFinishAtTarget(Vec3 _PlayerPos, Vec3 _TargetFin){
+    declare Vec3 ClosestFin;
+    declare Real PreviousFinDist;
+    foreach(Fin in MapFinishLinePos){
+        if (ClosestFin == <0.0, 0.0, 0.0> || PreviousFinDist > ML::Distance(_PlayerPos, Fin)){
+            ClosestFin = Fin;
+            PreviousFinDist = ML::Distance(_PlayerPos, Fin);
+        }
+    }
+    if (ClosestFin == _TargetFin){
+        return True;
+    }
+    return False;
+}
+
+Vec3[Integer] GetRandomFinArray(){
+    declare Vec3[Integer] FinArray;
+    declare Vec3 CurRandFin;
+    while(FinArray.count != MapNbLaps){
+        if (MapFinishLinePos.count > 1){
+            CurRandFin = MapFinishLinePos[ML::Rand(0, MapFinishLinePos.count - 1)];
+            if (FinArray.count == 0){
+                if (PreviousFirstFin == <0.0, 0.0, 0.0> || PreviousFirstFin != CurRandFin){
+                    FinArray[FinArray.count] = CurRandFin;
+                }
+            }
+            else {
+                if (CurRandFin != FinArray[FinArray.count - 1]){
+                    FinArray[FinArray.count] = CurRandFin;
+                }
+            }
+        }
+        else {
+            FinArray[FinArray.count] = MapFinishLinePos[0];
+        }
+    }
+    PreviousFirstFin = FinArray[0];
+    return FinArray;
+}
+
+Void RegisterStunt(CTmModeEvent _Event){
+    declare netwrite Integer ScriptedStuntPoints for _Event.Player.Score;
+    declare netwrite NetStuntData NetStuntEvent for _Event.Player.Score;
+    declare Text StuntName = TL::Replace(_Event.StuntFigure ^ "", "::EStuntFigure::", "");
+    declare Integer CurStuntPoints;
+    declare Integer StuntType = 0;
+    if (StuntName == "RespawnPenalty"){
+        StuntType = 1;
+        CurStuntPoints = -1 * (ScriptedStuntPoints / 3);
+    }
+    else{
+        if (StuntName == "StraightJump"){
+            StuntType = 2;
+            CurStuntPoints = C_SimpleStuntWorth;
+        }
+        else if (TL::EndsWith("Wreck", StuntName)){
+            StuntType = 3;
+            CurStuntPoints = C_WreckStuntWorth;
+        }
+        else {
+            StuntType = 0;
+            CurStuntPoints = C_BaseStuntWorth;
+        }
+        CurStuntPoints += (C_RotationalStuntBonus * (_Event.Angle / 180));
+        CurStuntPoints = (CurStuntPoints * (_Event.Combo + 1));
+    }
+    NetStuntEvent.StuntScore = CurStuntPoints;
+    // ^ " " ^ _Event.Angle ^ " x" ^ _Event.Combo ^ "!!!"
+    if (_Event.Angle > 0){
+        StuntName ^= " " ^ _Event.Angle;
+    }
+    if (_Event.Combo > 0){
+        StuntName ^= " x" ^ (_Event.Combo + 1);
+    }
+    if (StuntType == 0){
+        StuntName ^= "!!!";
+    }
+    NetStuntEvent.StuntName = StuntName;
+    NetStuntEvent.StuntTime = Now;
+    ScriptedStuntPoints += CurStuntPoints;
+    if (ScriptedStuntPoints <= 0){
+        ScriptedStuntPoints = 0;
+    }
+}
+
 Void TogglePlayerInput(CTmPlayer _Player, Boolean _HasControl, Boolean _CanSteer){
-   if (!_HasControl){
-       _Player.CoopMode = CTmPlayer::ETmRacePlayerCoopMode::Symbiosys;
-       _Player.ControllerCount = 1;
-       if (_CanSteer){
-           _Player.ControllerId0 = 1;
-       }
-       else {
-           _Player.ControllerId0 = 2;
-       }
-   }
-   else {
-       _Player.ControllerCount = 0;
-       _Player.ControllerId0 = -1;
-       _Player.CoopMode = CTmPlayer::ETmRacePlayerCoopMode::None;
-   }
+    if (!_HasControl){
+        _Player.CoopMode = CTmPlayer::ETmRacePlayerCoopMode::Symbiosys;
+        _Player.ControllerCount = 1;
+        if (_CanSteer){
+            _Player.ControllerId0 = 1;
+        }
+        else {
+            _Player.ControllerId0 = 2;
+        }
+    }
+    else {
+        _Player.ControllerCount = 0;
+        _Player.ControllerId0 = -1;
+        _Player.CoopMode = CTmPlayer::ETmRacePlayerCoopMode::None;
+    }
 }
 
 Void SetPlayerSettings(CTmPlayer _Player){
-   declare metadata Boolean UseCrashPenalty for Map;
-   declare metadata Boolean LowGravity for Map;
-   declare Integer PenaltyTimeout for _Player.User;
-   _Player.EnableStuntMode = True;
-   if (LowGravity) {
-       _Player.GravityCoef = 0.5;
-   }
-   else {
-       _Player.GravityCoef = 1.0;
-   }
-   if (PenaltyTimeout < Now || PenaltyTimeout == 0) {
-       TogglePlayerInput(_Player, True, True);
-   }
-   else {
-       TogglePlayerInput(_Player, False, False);
-   }
-   _Player.ForceModelId = RoundCar;
+    declare metadata Boolean UseCrashPenalty for Map;
+    declare metadata Boolean LowGravity for Map;
+    declare Integer PenaltyTimeout for _Player.User;
+    _Player.EnableStuntMode = True;
+    if (LowGravity) {
+        _Player.GravityCoef = 0.5;
+    }
+    else {
+        _Player.GravityCoef = 1.0;
+    }
+    if (PenaltyTimeout < Now || PenaltyTimeout == 0) {
+        TogglePlayerInput(_Player, True, True);
+    }
+    else {
+        TogglePlayerInput(_Player, False, False);
+    }
+    _Player.ForceModelId = RoundCar;
 }
 
-Void SetPlayerPenalty(CTmPlayer _Player, Integer _PenaltyTime){
+Void SetPlayerPenalty(CTmPlayer _Player, Integer _PenaltyTime, Boolean _CanSkipPen){
     declare netwrite Integer[Text] NetPentalty for Teams[0];
-   declare Integer PenaltyTimeout for _Player.User;
-   if (_PenaltyTime <= 0) {
-       PenaltyTimeout = 0;
-   }
-   else {
-       PenaltyTimeout = Now + _PenaltyTime;
-   }
-   NetPentalty[_Player.User.Login] = PenaltyTimeout;
+    declare Integer PenaltyTimeout for _Player.User;
+    declare Boolean CanSkipPenalty for _Player.User;
+    CanSkipPenalty = _CanSkipPen;
+    if (_PenaltyTime <= 0) {
+        PenaltyTimeout = 0;
+    }
+    else {
+        PenaltyTimeout = Now + _PenaltyTime;
+    }
+    NetPentalty[_Player.User.Login] = PenaltyTimeout;
 }
 Integer[] GetMapCars(){
-   declare metadata Integer EffectVersion for Map;
-   declare metadata Boolean[Integer] EnabledCars for Map;
-   declare Integer[] CarList;
-   if (EffectVersion != 0){
-       for (i, 0, 11){
-           if (EnabledCars[i]){
-               CarList.add(i);
-           }
-       }
-       return CarList;
-   }
-   return [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    declare metadata Integer EffectVersion for Map;
+    declare metadata Boolean[Integer] EnabledCars for Map;
+    declare Integer[] CarList;
+    if (EffectVersion != 0){
+        for (i, 0, 11){
+            if (EnabledCars[i]){
+                CarList.add(i);
+            }
+        }
+        return CarList;
+    }
+    return [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 }
 Void SetRoundCar(){
-   declare Integer CarIndex;
-   declare Boolean CarFound;
-   if (UsedCars.count == MapCars.count) {
-       UsedCars.clear();
-   }
-   while (!CarFound) {
-       yield;
-       CarIndex = MapCars[ML::Rand(0, MapCars.count - 1)];
-       if (!UsedCars.exists(CarIndex)) {
-           CarFound = True;
-       }
-   }
-   UsedCars.add(CarIndex);
-   log(UsedCars);
-   log(MapCars);
-   log(C_CarIndex[CarIndex]);
-   RoundCar = CarModels[C_CarIndex[CarIndex]];
+    declare Integer CarIndex;
+    declare Boolean CarFound;
+    if (UsedCars.count == MapCars.count) {
+        UsedCars.clear();
+    }
+    while (!CarFound) {
+        yield;
+        CarIndex = MapCars[ML::Rand(0, MapCars.count - 1)];
+        if (!UsedCars.exists(CarIndex)) {
+            CarFound = True;
+        }
+    }
+    UsedCars.add(CarIndex);
+    RoundCar = CarModels[C_CarIndex[CarIndex]];
 }
 
 // ---------------------------------- //
@@ -423,11 +611,11 @@ Void SetRoundCar(){
 // ---------------------------------- //
 // ---------------------------------- //
 /** Update the scores table footer text
- *
- *	@param	_PointsLimit							The points limit
- *	@param	_RoundsPerMap							The number of round per map
- *	@param	_MapsPerMatch							The number of maps per match
- */
+*
+*	@param	_PointsLimit							The points limit
+*	@param	_RoundsPerMap							The number of round per map
+*	@param	_MapsPerMatch							The number of maps per match
+*/
 Void UpdateScoresTableFooter(Integer _PointsLimit, Integer _RoundsPerMap, Integer _MapsPerMatch) {
     if (Hud != Null && Hud.ScoresTable != Null) {
         declare Text[] Parts;
@@ -472,9 +660,9 @@ Void UpdateScoresTableFooter(Integer _PointsLimit, Integer _RoundsPerMap, Intege
 
 // ---------------------------------- //
 /** Get the time left to the players to finish the round after the first player
- *
- *	@return 		The time left in ms
- */
+*
+*	@return 		The time left in ms
+*/
 Integer GetFinishTimeout() {
     declare FinishTimeout = 0;
     
@@ -482,16 +670,16 @@ Integer GetFinishTimeout() {
         FinishTimeout = S_FinishTimeout * 1000;
     } else {
         FinishTimeout = 5000;
-        if (Map.TMObjective_IsLapRace && NbLaps > 0 && Map.TMObjective_NbLaps > 0) {
-            FinishTimeout += ((Map.TMObjective_AuthorTime / Map.TMObjective_NbLaps) * NbLaps) / 6;
+        if (Map.TMObjective_IsLapRace && NbLaps > 0 && MapNbLaps > 0) {
+            FinishTimeout += ((Map.TMObjective_AuthorTime / MapNbLaps) * NbLaps) / 6;
         } else {
             FinishTimeout += Map.TMObjective_AuthorTime / 6;
         }
     }
     
     if (S_UseAlternateRules) {
-        if (Map.TMObjective_IsLapRace && NbLaps > 0 && Map.TMObjective_NbLaps > 0) {
-            return G_RoundStartTime + ((Map.TMObjective_AuthorTime / Map.TMObjective_NbLaps) * NbLaps) + FinishTimeout;
+        if (Map.TMObjective_IsLapRace && NbLaps > 0 && MapNbLaps > 0) {
+            return G_RoundStartTime + ((Map.TMObjective_AuthorTime / MapNbLaps) * NbLaps) + FinishTimeout;
         } else {
             return G_RoundStartTime + Map.TMObjective_AuthorTime + FinishTimeout;
         }
@@ -505,7 +693,7 @@ Integer GetFinishTimeout() {
 
 // ---------------------------------- //
 /// Compute the latest race scores
-Void ComputeLatestRaceScores() {
+Void ComputeLatestRaceScores(Boolean IsEndOfRound) {
     MB_SortScores(CTmMode::ETmScoreSortOrder::PrevRace_Time);
     
     // Only points for the first players
@@ -526,15 +714,53 @@ Void ComputeLatestRaceScores() {
     // Points distributed between all players
     else {		
         declare I = 0;
+
+        declare metadata Boolean IncStuntPoints for Map;
+        declare CScore StuntWinner;
+        declare Integer StuntWinnerPoints;
+        if (IncStuntPoints && IsEndOfRound){
+            foreach (Score in Scores) { // loop once to get the stunt winner if stunts is enabled.
+                declare netwrite Integer ScriptedStuntPoints for Score;
+                if (Scores::GetPlayerPrevRaceTime(Score) > 0) {
+                    if (StuntWinnerPoints == 0 || ScriptedStuntPoints > StuntWinnerPoints){
+                        StuntWinner = Score;
+                        StuntWinnerPoints = ScriptedStuntPoints;
+                    }
+                }
+            }
+            declare Boolean ObtainedStuntBonus for StuntWinner;
+            ObtainedStuntBonus = True;
+        }
+        
         foreach (Score in Scores) {
+            declare Boolean EndedOnWrongFinish for Score;
+            declare Boolean ObtainedStuntBonus for Score;
+            if (!IsEndOfRound && EndedOnWrongFinish){
+                UIManager.UIAll.SendChat(Score.User.Name ^ "$z$s $F33finished at the wrong finish and got a point penalty!");
+            }
             if (Scores::GetPlayerPrevRaceTime(Score) > 0) {
                 declare Points = 0;
                 declare PointsRepartition = Scores::GetPointsRepartition();
+                declare Integer PointDifference;
+                declare Integer StuntBonus;
+                declare Integer WrongFinishScore;
+                if (PointsRepartition.existskey(0) && PointsRepartition.existskey(1)){
+                    PointDifference = PointsRepartition[0] - PointsRepartition[1];
+                    WrongFinishScore = PointDifference * 2;
+                    StuntBonus = PointDifference / 2;
+                }
                 if (PointsRepartition.count > 0) {
                     if (PointsRepartition.existskey(I)) {
                         Points = PointsRepartition[I];
                     } else {
                         Points = PointsRepartition[PointsRepartition.count - 1];
+                    }
+                    if (ObtainedStuntBonus){
+                        UIManager.UIAll.SendChat(Score.User.Name ^ "$z$s has won the stunt portion of this round with a score of " ^ StuntWinnerPoints ^ " and got a bonus of " ^ StuntBonus ^ " points!");
+                        Points += StuntBonus;
+                    }
+                    if (EndedOnWrongFinish){
+                        Points = WrongFinishScore;
                     }
                 }
                 //Score.PrevRaceDeltaPoints = Points;
@@ -543,6 +769,10 @@ Void ComputeLatestRaceScores() {
             } else {
                 //Score.PrevRaceDeltaPoints = 0;
                 Scores::SetPlayerRoundPoints(Score, 0);
+            }
+            if (IsEndOfRound){
+                EndedOnWrongFinish = False;
+                ObtainedStuntBonus = False;
             }
         }
     }
@@ -556,11 +786,11 @@ Void ComputeScores() {
 
 // ---------------------------------- //
 /** Check if the points limit was reached
- *
- *	@return														1 if the points limit is reached
- *																		0 if there is a tie
- *																		-1 if the points limit is not reached
- */
+*
+*	@return														1 if the points limit is reached
+*																		0 if there is a tie
+*																		-1 if the points limit is not reached
+*/
 Integer PointsLimitReached() {
     declare MaxScore = -1;
     declare Tie = False;
@@ -581,9 +811,9 @@ Integer PointsLimitReached() {
 
 // ---------------------------------- //
 /** Check if we should go to the next map
- *
- *	@return		True if it is the case, false otherwise
- */
+*
+*	@return		True if it is the case, false otherwise
+*/
 Boolean MapIsOver() {
     declare metadata Integer RoundLimit for Map;
     if (S_RoundsPerMap > 0 && MB_GetRoundCount() >= S_RoundsPerMap) return True; //< There is a rounds limit and it is reached
@@ -597,9 +827,9 @@ Boolean MapIsOver() {
 
 // ---------------------------------- //
 /** Check if we should go to the next match
- *
- *	@return		True if it is the case, false otherwise
- */
+*
+*	@return		True if it is the case, false otherwise
+*/
 Boolean MatchIsOver() {
     if (PointsLimitReached() == 0) return False; //< There is a tie and it is not allowed
     if (PointsLimitReached() == 1) return True; //< There is a points limit and it is reached
@@ -610,147 +840,155 @@ Boolean MatchIsOver() {
 }
 
 Void InitKEKUiLayer(){
-   declare CUILayer Layer = UIManager.UILayerCreate();
-   Layer.ManialinkPage = """
-   <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
-   <manialink version="3">
-       <frame id="Frame_EffectInfo" pos="0 80">
-           <frame id="Frame_OldBonusInfoBG" hidden="1">
-               <quad pos="25 -12.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" rot="-90" colorize="555"/>
-               <quad pos="40 -2.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" rot="-90" colorize="555"/>
-               <quad pos="25 -7.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
-               <quad pos="40 5" z-index="0" size="5 10" bgcolor="FFFA" halign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555" valign="center"/>
-               <quad pos="37.5 -2.5" z-index="0" size="10 5" bgcolor="FFFA" halign="right" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
-               <quad pos="20 -7.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" rot="-90" colorize="555"/>
-               <quad pos="25 -2.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" rot="90" colorize="555"/>
-               <quad pos="27.5 -5" z-index="0" size="5 10" bgcolor="FFFA" halign="left" valign="bottom" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" rot="90" colorize="555"/>
-               <quad pos="37.5555 1.1e-07" z-index="0" size="5 10" bgcolor="FFFA" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" rot="-90" halign="left" valign="bottom" colorize="555"/>
-               <quad pos="-25 -12.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" colorize="555"/>
-               <quad pos="-40 -2.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" colorize="555"/>
-               <quad pos="-25 -7.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
-               <quad pos="-40 5" z-index="0" size="5 10" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
-               <quad pos="-37.5 -2.5" z-index="0" size="10 5" bgcolor="FFFA" valign="center" halign="left" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
-               <quad pos="-20 -7.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" colorize="555"/>
-               <quad pos="-25 -2.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" rot="-180" colorize="555"/>
-               <quad pos="-27.5 -5" z-index="0" size="10 5" bgcolor="FFFA" halign="left" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" rot="-180" valign="bottom" colorize="555"/>
-               <quad pos="-37.5 0" z-index="0" size="10 5" bgcolor="FFFA" halign="left" valign="bottom" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" colorize="555"/>
-               <quad pos="22.5 -12.5" z-index="0" size="45 5" bgcolor="FFFA" halign="right" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
-           </frame>
-
-           <label  z-index="0" size="60 10" text="Earthquake" halign="center" valign="center" pos="0 6" textsize="7" textemboss="1" textfont="Gotham/Gotham-Bold" id="Label_EffectName"/>
-           <label  z-index="0" size="45 10" text="10" halign="center" valign="center" pos="0 -4" textsize="7" textemboss="1" textfont="Gotham/Gotham-Bold" id="Label_EffectTimer"/>
-           
-           <quad pos="-35 6" z-index="0" size="0.5 5" bgcolor="FFFA" halign="center" valign="center"/>
-           <quad pos="-33 6" z-index="0" size="0.5 3" bgcolor="FFFA" halign="center" valign="center"/>
-           <quad pos="-31 6" z-index="0" size="0.5 7" bgcolor="FFFA" halign="center" valign="center"/>
-           <quad pos="35 6" z-index="0" size="0.5 5" bgcolor="FFFA" halign="center" valign="center"/>
-           <quad pos="38 6" z-index="0" size="3 0.5" bgcolor="FFFA" halign="center" valign="center"/>
-           <quad pos="-38 6" z-index="0" size="3 0.5" bgcolor="FFFA" halign="center" valign="center"/>
-           <quad pos="33 6" z-index="0" size="0.5 3" bgcolor="FFFA" halign="center" valign="center"/>
-           <quad pos="31 6" z-index="0" size="0.5 7" bgcolor="FFFA" halign="center" valign="center"/>
-           <quad pos="0 0" z-index="0" size="80 0.5" bgcolor="FFFA" halign="center" valign="center"/>
-           <quad pos="0 -10" z-index="0" size="42 0.5" bgcolor="FFFA" halign="center" valign="center" hidden="1"/>
-           
-           <quad pos="-20 -5" z-index="0" size="0.5 5" bgcolor="FFFA" halign="center" valign="center"/>
-           <quad pos="-18 -5" z-index="0" size="0.5 3" bgcolor="FFFA" halign="center" valign="center"/>
-           <quad pos="-16 -5" z-index="0" size="0.5 1" bgcolor="FFFA" halign="center" valign="center"/>
-           <quad pos="-14.3 -5" z-index="0" size="5 0.5" bgcolor="FFFA" halign="left" valign="center"/>
-           <quad pos="20 -5" z-index="0" size="0.5 5" bgcolor="FFFA" halign="center" valign="center"/>
-           <quad pos="18 -5" z-index="0" size="0.5 3" bgcolor="FFFA" halign="center" valign="center"/>
-           <quad pos="16 -5" z-index="0" size="0.5 1" bgcolor="FFFA" halign="center" valign="center"/>
-           <quad pos="11.8 -5" z-index="0" size="5 0.5" bgcolor="FFFA" halign="center" valign="center"/>
-           
-           <quad pos="0 10" z-index="0" size="75 12" bgcolor="555A" halign="center" valign="top" hidden="1"/>
-           <quad pos="0 -10" z-index="0" size="50 8" bgcolor="555A" halign="center" valign="bottom" hidden="1"/>
+    declare CUILayer Layer = UIManager.UILayerCreate();
+    Layer.ManialinkPage = """
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<manialink version="3">
+<frame id="Frame_Stunts" hidden="1">
+    <frame id="Frame_StuntInfo">
+        <label id="Label_StuntsName" pos="0 65" z-index="0" size="100 10" text="" textfont="Gotham/Gotham-Bold" halign="center" valign="center" textsize="7" textemboss="1" hidden="1"/>
+        <label id="Label_StuntReward" pos="0 56" z-index="0" size="100 10" text="" textfont="Gotham/Gotham-Bold" halign="center" valign="center" textsize="5" textemboss="1" hidden="1"/>
+    </frame>
+    <frame id="Frame_StuntPoints" pos="146 1.5">
+        <label pos="3 0.5" z-index="0" size="17 10" text="9999" halign="right" valign="center" textfont="Gotham/Gotham-Bold" textemboss="1" textsize="4" id="Label_StuntPoints"/>
+        <quad pos="9 0.5" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" style="BgRaceScore2" substyle="Points"/>
+        <quad pos="15 0" z-index="0" size="50 20" bgcolor="FFFA" style="Bgs1InRace" substyle="Glow" halign="right" valign="center" colorize="444"/>
+        <quad pos="30 0" z-index="0" size="50 20" bgcolor="FFFA" style="Bgs1InRace" substyle="Glow" halign="right" valign="center" colorize="444"/>
+        <quad pos="45 0" z-index="0" size="50 20" bgcolor="FFFA" style="Bgs1InRace" substyle="Glow" halign="right" valign="center" colorize="444"/>
+        <quad pos="60 0" z-index="0" size="50 20" bgcolor="FFFA" style="Bgs1InRace" substyle="Glow" halign="right" valign="center" colorize="444"/>
+    </frame>
+</frame>
+<frame id="Frame_EffectInfo" pos="0 80">
+    <frame id="Frame_OldBonusInfoBG" hidden="1">
+        <quad pos="25 -12.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" rot="-90" colorize="555"/>
+        <quad pos="40 -2.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" rot="-90" colorize="555"/>
+        <quad pos="25 -7.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
+        <quad pos="40 5" z-index="0" size="5 10" bgcolor="FFFA" halign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555" valign="center"/>
+        <quad pos="37.5 -2.5" z-index="0" size="10 5" bgcolor="FFFA" halign="right" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
+        <quad pos="20 -7.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" rot="-90" colorize="555"/>
+        <quad pos="25 -2.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" rot="90" colorize="555"/>
+        <quad pos="27.5 -5" z-index="0" size="5 10" bgcolor="FFFA" halign="left" valign="bottom" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" rot="90" colorize="555"/>
+        <quad pos="37.5555 1.1e-07" z-index="0" size="5 10" bgcolor="FFFA" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" rot="-90" halign="left" valign="bottom" colorize="555"/>
+        <quad pos="-25 -12.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" colorize="555"/>
+        <quad pos="-40 -2.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" colorize="555"/>
+        <quad pos="-25 -7.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
+        <quad pos="-40 5" z-index="0" size="5 10" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
+        <quad pos="-37.5 -2.5" z-index="0" size="10 5" bgcolor="FFFA" valign="center" halign="left" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
+        <quad pos="-20 -7.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" colorize="555"/>
+        <quad pos="-25 -2.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" rot="-180" colorize="555"/>
+        <quad pos="-27.5 -5" z-index="0" size="10 5" bgcolor="FFFA" halign="left" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" rot="-180" valign="bottom" colorize="555"/>
+        <quad pos="-37.5 0" z-index="0" size="10 5" bgcolor="FFFA" halign="left" valign="bottom" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" colorize="555"/>
+        <quad pos="22.5 -12.5" z-index="0" size="45 5" bgcolor="FFFA" halign="right" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
+    </frame>
+    
+    <label  z-index="0" size="60 10" text="Earthquake" halign="center" valign="center" pos="0 6" textsize="7" textemboss="1" textfont="Gotham/Gotham-Bold" id="Label_EffectName"/>
+    <label  z-index="0" size="45 10" text="10" halign="center" valign="center" pos="0 -4" textsize="7" textemboss="1" textfont="Gotham/Gotham-Bold" id="Label_EffectTimer"/>
+    
+    <quad pos="-35 6" z-index="0" size="0.5 5" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="-33 6" z-index="0" size="0.5 3" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="-31 6" z-index="0" size="0.5 7" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="35 6" z-index="0" size="0.5 5" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="38 6" z-index="0" size="3 0.5" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="-38 6" z-index="0" size="3 0.5" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="33 6" z-index="0" size="0.5 3" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="31 6" z-index="0" size="0.5 7" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="0 0" z-index="0" size="80 0.5" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="0 -10" z-index="0" size="42 0.5" bgcolor="FFFA" halign="center" valign="center" hidden="1"/>
+    
+    <quad pos="-20 -5" z-index="0" size="0.5 5" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="-18 -5" z-index="0" size="0.5 3" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="-16 -5" z-index="0" size="0.5 1" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="-14.3 -5" z-index="0" size="5 0.5" bgcolor="FFFA" halign="left" valign="center"/>
+    <quad pos="20 -5" z-index="0" size="0.5 5" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="18 -5" z-index="0" size="0.5 3" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="16 -5" z-index="0" size="0.5 1" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="11.8 -5" z-index="0" size="5 0.5" bgcolor="FFFA" halign="center" valign="center"/>
+    
+    <quad pos="0 10" z-index="0" size="75 12" bgcolor="555A" halign="center" valign="top" hidden="1"/>
+    <quad pos="0 -10" z-index="0" size="50 8" bgcolor="555A" halign="center" valign="bottom" hidden="1"/>
 <quad pos="0 40" z-index="0" size="300 100" bgcolor="FFFA" style="Bgs1InRace" substyle="Glow" halign="center" valign="center" colorize="444"/>
 <quad pos="0 20" z-index="0" size="300 100" bgcolor="FFFA" style="Bgs1InRace" substyle="Glow" halign="center" valign="center" colorize="444"/>
-           <quad pos="0 0" z-index="0" size="300 100" bgcolor="FFFA" style="Bgs1InRace" substyle="Glow" halign="center" valign="center" colorize="444"/>
-       </frame>
-       <frame id="Frame_KEKLEffects" pos="-45 -110" scale="1.0">
-           <label pos="0 9" z-index="0" size="50 10" text="Map Effects" halign="center" valign="center" textfont="Gotham/Gotham-Bold" textemboss="1" textsize="5"/>
-           <label pos="0 3.5" z-index="0" size="47 13" text="Effect1, Effect2, Effect3, Effect4, Effect5" halign="center" textfont="Gotham/Gotham-Medium" textemboss="1" textsize="1.5" autonewline="1" id="Label_EffectList" valign="top"/>
-           <quad pos="-25 -5" z-index="0" size="5 35" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" opacity="1.0" colorize="435"/>
-           <quad pos="25 -5" z-index="0" size="5 35" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" opacity="1.0" colorize="435"/>
-           <quad pos="0 15" z-index="0" size="45 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" opacity="1.0" colorize="435"/>
-           <quad pos="22.5 12.5" z-index="0" size="5 5" bgcolor="FFFA" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" opacity="1.0" rot="180" valign="top" halign="right" colorize="435"/>
-           <quad pos="-22.5 12.5" z-index="0" size="5 5" bgcolor="FFFA" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" opacity="1.0" rot="90" valign="top" halign="right" colorize="435"/>
-           <quad pos="20435 10" z-index="0" size="5 5" bgcolor="FFFA" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" opacity="1.0" valign="center" halign="center" rot="180"/>
-           <quad pos="-20 10" z-index="0" size="5 5" bgcolor="FFFA" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" opacity="1" valign="center" halign="center" rot="90" colorize="435"/>
-           <quad pos="0 9" z-index="0" size="50 10" bgcolor="FFFA" halign="center" valign="center" style="Bgs1" substyle="BgHealthBar"/>
-           <quad pos="0 0" z-index="0" size="50 30" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/GradientBG.png" opacity="0.5" id="Quad_EffectBG" modulatecolor="C9F"/>
-       </frame>
-       <frame id="Frame_Stunts" pos="146 1.5" hidden="1">
-           <label pos="0 -3" z-index="0" size="30 10" text="0:00.00" halign="center" valign="center" textfont="RajdhaniMono" textsize="5" textemboss="1" id="Label_StuntTime"/>
-           <label pos="3 4" z-index="0" size="17 10" text="9999" halign="right" valign="center" textfont="Gotham/Gotham-Bold" textemboss="1" textsize="4" id="Label_StuntPoints"/>
-           <quad pos="9 4" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" style="BgRaceScore2" substyle="Points"/>
-           <quad pos="2.5 10" z-index="0" size="30 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" opacity="1.0" id="Quad_StuntsBG" colorize="435"/>
-           <quad pos="2.5 -10" z-index="0" size="30 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" opacity="1.0" id="Quad_StuntsBG" colorize="435"/>
-           <quad pos="-15 0" z-index="0" size="5 15" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" opacity="1.0" id="Quad_StuntsBG" colorize="435"/>
-           <quad pos="-10 5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" opacity="1.0" id="Quad_StuntsBG" rot="90" colorize="435"/>
-           <quad pos="-10 -5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" opacity="1.0" id="Quad_StuntsBG" colorize="435"/>
-           <quad pos="-15 10" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" opacity="1.0" id="Quad_StuntsBG" rot="90" colorize="435"/>
-           <quad pos="-15 -10" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" opacity="1.0" id="Quad_StuntsBG" colorize="435"/>
-           <quad pos="0 0" z-index="0" size="30 20" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/GradientBG.png" opacity="0.5" id="Quad_StuntsBG" modulatecolor="C9F"/>
-       </frame>
-       <quad  z-index="0" size="320 180" bgcolor="FFFA" halign="center" valign="center" image="file://Media/Images/ManiaPlanet_HpJ56h7v53.jpg" hidden="1"/>
-       <frame id="Frame_Vignette" pos="0 0" hidden="1">
-           <label pos="0 -60" z-index="0" size="100 10" text="Penalty Time:" halign="center" valign="center" textfont="Gotham/Gotham-Medium" textemboss="1" textsize="5"/>
-           <label pos="0 -67" z-index="0" size="100 10" text="10" halign="center" valign="center" textfont="Gotham/Gotham-Bold" textemboss="1" textsize="5" textcolor="F00" id="Label_PenaltyTimer"/>
-           <quad pos="0 0" z-index="-10000" size="320 180" bgcolor="00000000" image="file://Media/Images/Effects/Vignette.dds" halign="center" valign="center"/>
-           <quad pos="0 0" z-index="-10000" size="320 180" bgcolor="00000000" image="file://Media/Images/Effects/Vignette.dds" halign="center" valign="center"/>
-           <quad pos="0 0" z-index="-10000" size="320 180" bgcolor="FF000011" halign="center" valign="center"/>
-       </frame>
-       <script><!--
-       #Include "TextLib" as TL
-       #Include "MathLib" as ML
-       #Include "ColorLib" as CL
+    <quad pos="0 0" z-index="0" size="300 100" bgcolor="FFFA" style="Bgs1InRace" substyle="Glow" halign="center" valign="center" colorize="444"/>
+</frame>
+<frame id="Frame_KEKLEffects" pos="-45 -110" scale="1.0">
+    <label pos="0 9" z-index="0" size="50 10" text="Map Effects" halign="center" valign="center" textfont="Gotham/Gotham-Bold" textemboss="1" textsize="5"/>
+    <label pos="0 3.5" z-index="0" size="47 13" text="Effect1, Effect2, Effect3, Effect4, Effect5" halign="center" textfont="Gotham/Gotham-Medium" textemboss="1" textsize="1.5" autonewline="1" id="Label_EffectList" valign="top"/>
+    <quad pos="-25 -5" z-index="0" size="5 35" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" opacity="1.0" colorize="435"/>
+    <quad pos="25 -5" z-index="0" size="5 35" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" opacity="1.0" colorize="435"/>
+    <quad pos="0 15" z-index="0" size="45 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" opacity="1.0" colorize="435"/>
+    <quad pos="22.5 12.5" z-index="0" size="5 5" bgcolor="FFFA" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" opacity="1.0" rot="180" valign="top" halign="right" colorize="435"/>
+    <quad pos="-22.5 12.5" z-index="0" size="5 5" bgcolor="FFFA" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" opacity="1.0" rot="90" valign="top" halign="right" colorize="435"/>
+    <quad pos="20435 10" z-index="0" size="5 5" bgcolor="FFFA" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" opacity="1.0" valign="center" halign="center" rot="180"/>
+    <quad pos="-20 10" z-index="0" size="5 5" bgcolor="FFFA" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" opacity="1" valign="center" halign="center" rot="90" colorize="435"/>
+    <quad pos="0 9" z-index="0" size="50 10" bgcolor="FFFA" halign="center" valign="center" style="Bgs1" substyle="BgHealthBar"/>
+    <quad pos="0 0" z-index="0" size="50 30" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/GradientBG.png" opacity="0.5" id="Quad_EffectBG" modulatecolor="C9F"/>
+</frame>
+<quad  z-index="0" size="320 180" bgcolor="FFFA" halign="center" valign="center" image="file://Media/Images/ManiaPlanet_HpJ56h7v53.jpg" hidden="1"/> <!-- I'm never removing this :) -->
+<frame id="Frame_Vignette" pos="0 0" hidden="1">
+    <label pos="0 -60" z-index="0" size="100 10" text="Penalty Time:" halign="center" valign="center" textfont="Gotham/Gotham-Medium" textemboss="1" textsize="5"/>
+    <label pos="0 -67" z-index="0" size="100 10" text="10" halign="center" valign="center" textfont="Gotham/Gotham-Bold" textemboss="1" textsize="5" textcolor="F00" id="Label_PenaltyTimer"/>
+    <quad pos="0 0" z-index="-10000" size="320 180" bgcolor="00000000" image="file://Media/Images/Effects/Vignette.dds" halign="center" valign="center"/>
+    <quad pos="0 0" z-index="-10000" size="320 180" bgcolor="00000000" image="file://Media/Images/Effects/Vignette.dds" halign="center" valign="center"/>
+    <quad pos="0 0" z-index="-10000" size="320 180" bgcolor="FF000011" halign="center" valign="center"/>
+</frame>
+<script><!--
+    #Include "TextLib" as TL
+    #Include "MathLib" as ML
+    #Include "ColorLib" as CL
+    
+    #Struct NetEffectData{
+        Text EffectName;
+        Text EffectTime;
+        Vec3 EffectTimeColor;
+    }
 
-       #Struct NetEffectData{
-           Text EffectName;
-           Text EffectTime;
-           Vec3 EffectTimeColor;
-       }
-
-       declare CMlLabel MapSettings;
-       declare Integer MapInfoTimeout;
-       declare Text RecentMapUid;
-       declare CMlFrame BonusFrame;
-       declare CMlFrame VignetteFrame;
-
-       Text GetNextRainbowColor(Text CurColor){
-           declare Text[Text] Yummers = ["faa" => "fda", "fda" => "ffa", "ffa" => "bfa", "bfa" => "aff", "aff" => "daf", "daf" => "faa"];
-           return Yummers[CurColor];
-       }
-
-       Text BonusEnumToText(CTmMlPlayer::ETmBonusModeEventType BonusType, Boolean IsExtra){
-           declare Text NewEffectName = "";
-           switch (BonusType){
-               case CTmMlPlayer::ETmBonusModeEventType::Bumps: {
-                   NewEffectName = "$fdaEarthquake";
-               }
-               case CTmMlPlayer::ETmBonusModeEventType::LowGravity: {
-                   NewEffectName = "$aefLevitation";
-               }
-               case CTmMlPlayer::ETmBonusModeEventType::FreeWheeling: {
-                   NewEffectName = "$faaFreeWheeling";
-               }
-               case CTmMlPlayer::ETmBonusModeEventType::LockedDirections: {
-                   NewEffectName = "$dafNoSteering";
-               }
-               default: {
-                   NewEffectName = "$FFFNone";
-               }
-           }
-           if (IsExtra){
-               NewEffectName = NewEffectName ^ " $db3+";
-           }
-           return NewEffectName;
-       }
-       Void VignetteVisibility(Boolean Shown, CTmMlPlayer Player){
-           if (Player != Null){
-               declare CMlLabel PenaltyTimer = (Page.GetFirstChild("Label_PenaltyTimer") as CMlLabel);
-               declare netread Integer[Text] NetPentalty for Teams[0];
-               if (NetPentalty.existskey(Player.User.Login)){
+    #Struct NetStuntData{
+        Text StuntName;
+        Integer StuntScore;
+        Integer StuntTime;
+    }
+    
+    declare CMlLabel MapSettings;
+    declare Integer MapInfoTimeout;
+    declare Text RecentMapUid;
+    declare CMlFrame BonusFrame;
+    declare CMlFrame VignetteFrame;
+    declare CMlFrame StuntsFrame;
+    
+    Text GetNextRainbowColor(Text CurColor){
+        declare Text[Text] Yummers = ["faa" => "fda", "fda" => "ffa", "ffa" => "bfa", "bfa" => "aff", "aff" => "daf", "daf" => "faa"];
+        return Yummers[CurColor];
+    }
+    
+    Text BonusEnumToText(CTmMlPlayer::ETmBonusModeEventType BonusType, Boolean IsExtra){
+        declare Text NewEffectName = "";
+        switch (BonusType){
+            case CTmMlPlayer::ETmBonusModeEventType::Bumps: {
+                NewEffectName = "$fdaEarthquake";
+            }
+            case CTmMlPlayer::ETmBonusModeEventType::LowGravity: {
+                NewEffectName = "$aefLevitation";
+            }
+            case CTmMlPlayer::ETmBonusModeEventType::FreeWheeling: {
+                NewEffectName = "$faaFreeWheeling";
+            }
+            case CTmMlPlayer::ETmBonusModeEventType::LockedDirections: {
+                NewEffectName = "$dafNoSteering";
+            }
+            default: {
+                NewEffectName = "$FFFNone";
+            }
+        }
+        if (IsExtra){
+            NewEffectName = NewEffectName ^ " $db3+";
+        }
+        return NewEffectName;
+    }
+    Void VignetteVisibility(Boolean Shown, CTmMlPlayer Player){
+        if (Player != Null){
+            declare CMlLabel PenaltyTimer = (Page.GetFirstChild("Label_PenaltyTimer") as CMlLabel);
+            declare netread Integer[Text] NetPentalty for Teams[0];
+            if (NetPentalty.existskey(Player.User.Login)){
                 if (NetPentalty[Player.User.Login] != 0){
                     if (Shown){
                         PenaltyTimer.Value = ((NetPentalty[Player.User.Login] - GameTime) / 1000) + 1 ^ "";
@@ -763,199 +1001,244 @@ Void InitKEKUiLayer(){
                 else {
                     VignetteFrame.Hide();
                 }
-               }
-               else {
+            }
+            else {
                 VignetteFrame.Hide();
-               }
-           }
-           else {
-               VignetteFrame.Hide();
-           }
-       }
-       Void BonusEffectVisibility(Boolean Shown, CTmMlPlayer ViewedPlayer, CTmMlPlayer ClientPlayer){
-           declare metadata Boolean RandEvents for Map;
-           declare CMlLabel BonusName = (Page.GetFirstChild("Label_EffectName") as CMlLabel);
-           declare CMlLabel BonusTimer = (Page.GetFirstChild("Label_EffectTimer") as CMlLabel);
-           if (ViewedPlayer != Null){
-               declare NetEffectData EffectData;
-                if (ViewedPlayer.RaceState == CTmMlPlayer::ERaceState::Running){
-                    EffectData.EffectName = BonusEnumToText(ViewedPlayer.BonusModeEventType, ViewedPlayer.BonusModeEventIsGold);
-                    if (ViewedPlayer.BonusModeTimeTillEvent <= 6000 && ViewedPlayer.BonusModeTimeTillEvent != 0){
-                        EffectData.EffectTimeColor = CL::HexToRgb("F22");
-                        EffectData.EffectTime = (ViewedPlayer.BonusModeTimeTillEvent / 1000) + 1 ^ "";
-                    }
-                    else if (ViewedPlayer.BonusModeTimeTillEvent == 0){
-                        EffectData.EffectTimeColor = CL::HexToRgb("F90");
-                        EffectData.EffectTime = (ViewedPlayer.BonusModeTimeTillEndEvent / 1000) + 1 ^ "";
-                        
-                    }
-                    else {
-                        EffectData.EffectTimeColor = CL::HexToRgb("FFF");
-                        EffectData.EffectTime = (ViewedPlayer.BonusModeTimeTillEvent / 1000) + 1 ^ "";
-                    }
+            }
+        }
+        else {
+            VignetteFrame.Hide();
+        }
+    }
+    Void BonusEffectVisibility(Boolean Shown, CTmMlPlayer ViewedPlayer, CTmMlPlayer ClientPlayer){
+        declare metadata Boolean RandEvents for Map;
+        declare CMlLabel BonusName = (Page.GetFirstChild("Label_EffectName") as CMlLabel);
+        declare CMlLabel BonusTimer = (Page.GetFirstChild("Label_EffectTimer") as CMlLabel);
+        if (ViewedPlayer != Null){
+            declare NetEffectData EffectData;
+            if (ViewedPlayer.RaceState == CTmMlPlayer::ERaceState::Running){
+                EffectData.EffectName = BonusEnumToText(ViewedPlayer.BonusModeEventType, ViewedPlayer.BonusModeEventIsGold);
+                if (ViewedPlayer.BonusModeTimeTillEvent <= 6000 && ViewedPlayer.BonusModeTimeTillEvent != 0){
+                    EffectData.EffectTimeColor = CL::HexToRgb("F22");
+                    EffectData.EffectTime = (ViewedPlayer.BonusModeTimeTillEvent / 1000) + 1 ^ "";
+                }
+                else if (ViewedPlayer.BonusModeTimeTillEvent == 0){
+                    EffectData.EffectTimeColor = CL::HexToRgb("F90");
+                    EffectData.EffectTime = (ViewedPlayer.BonusModeTimeTillEndEvent / 1000) + 1 ^ "";
+                    
                 }
                 else {
-                    declare Text CurYummer for Teams[0];
-                    declare Integer NextYumm for Teams[0];
-                    EffectData.EffectName = "$" ^ CurYummer ^ "Please Wait";
-                    EffectData.EffectTime = "$" ^ CurYummer ^ "...";
-                    if (Now >= NextYumm){
-                        if (CurYummer == ""){
-                            CurYummer = "faa";
-                        }
-                        CurYummer = GetNextRainbowColor(CurYummer);
-                        NextYumm = Now + 100;
+                    EffectData.EffectTimeColor = CL::HexToRgb("FFF");
+                    EffectData.EffectTime = (ViewedPlayer.BonusModeTimeTillEvent / 1000) + 1 ^ "";
+                }
+            }
+            else {
+                declare Text CurYummer for Teams[0];
+                declare Integer NextYumm for Teams[0];
+                EffectData.EffectName = "$" ^ CurYummer ^ "Please Wait";
+                EffectData.EffectTime = "$" ^ CurYummer ^ "...";
+                if (Now >= NextYumm){
+                    if (CurYummer == ""){
+                        CurYummer = "faa";
                     }
+                    CurYummer = GetNextRainbowColor(CurYummer);
+                    NextYumm = Now + 100;
                 }
-                BonusTimer.TextColor = EffectData.EffectTimeColor;
-                BonusTimer.Value = EffectData.EffectTime;
-                BonusName.Value = EffectData.EffectName;
-                if (ClientPlayer != ViewedPlayer){
-                    BonusFrame.Hide();
-                }
-                else{
-                    if (RandEvents){
-                        if (Shown){
-                            BonusFrame.Show();
-                        }
-                        else {
-                            BonusFrame.Hide();
-                        }
+            }
+            BonusTimer.TextColor = EffectData.EffectTimeColor;
+            BonusTimer.Value = EffectData.EffectTime;
+            BonusName.Value = EffectData.EffectName;
+            if (ClientPlayer != ViewedPlayer){
+                BonusFrame.Hide();
+            }
+            else{
+                if (RandEvents){
+                    if (Shown){
+                        BonusFrame.Show();
                     }
                     else {
                         BonusFrame.Hide();
                     }
                 }
-           }
-           else {
-               BonusFrame.Hide();
-           }
-       }
-
-       Void UpdateEffectPage(){
-           declare Text[] EffectNames;
-           declare metadata Boolean RandEvents for Map;
-           declare metadata Boolean LowGravity for Map;
-           declare metadata Boolean RandCars for Map;
-           declare metadata Boolean IncStuntPoints for Map;
-           declare metadata Boolean UseCrashPenalty for Map;
-           declare metadata Integer EffectVersion for Map;
-           declare metadata Boolean SizeChanges for Map;
-           declare metadata Integer RoundLimit for Map;
-           if (LowGravity) {
-               EffectNames.add("LowGravity");
-           }
-           switch (EffectVersion) {
-               case 0: {
-                   if (RandEvents){
-                       EffectNames.add("RandomEvents");
-                       EffectNames.add("SizeChanges");
-                   }
-               }
-               default: {
-                   if (RandEvents) {
-                       EffectNames.add("RandomEvents");
-                   }
-                   if (SizeChanges) {
-                       EffectNames.add("SizeChanges");
-                   }
-               }
-           }
-           
-           if (RandCars) {
-               EffectNames.add("RandomCars");
-           }
-           if (IncStuntPoints) {
-               EffectNames.add("Stunts");
-           }
-           if (UseCrashPenalty) {
-               EffectNames.add("CrashPenalty");
-           }
-           if (!(RoundLimit <= 0) && !(RoundLimit > 3)) {
-                EffectNames.add("RoundsLimit");
-           }
-           if (EffectNames.count == 0) {
-               MapSettings.Value = "None";
-           }
-           else {
-               MapSettings.Value = TL::Join(", ", EffectNames);
-           }
-       }
-
-       main() {
-           VignetteFrame = (Page.GetFirstChild("Frame_Vignette") as CMlFrame);
-           BonusFrame = (Page.GetFirstChild("Frame_EffectInfo") as CMlFrame);
-           declare CMlFrame EffectsFrame = (Page.GetFirstChild("Frame_KEKLEffects") as CMlFrame);
-           declare Boolean InfoHasMovedIn = False;
-           declare Text EventType;
-           MapSettings = (Page.GetFirstChild("Label_EffectList") as CMlLabel);
-           
-           MapInfoTimeout = -1;
-           while(True) {
-               yield;
-               if(Map != Null){
-                   if (Map.MapInfo.MapUid != RecentMapUid) {
-                       UpdateEffectPage();
-                       RecentMapUid = Map.MapInfo.MapUid;
-                   }
-               }
-               if (MapInfoTimeout >= Now) {
-                   if (!InfoHasMovedIn) {
-                       AnimMgr.Add(EffectsFrame, "<frame pos=\"-45 -80\" />", Now, 250, CAnimManager::EAnimManagerEasing::ExpIn);
-                       InfoHasMovedIn = True;
-                   }
-               }
-               else if (InfoHasMovedIn) {
-                   AnimMgr.Add(EffectsFrame, "<frame pos=\"-45 -110\" />", Now, 250, CAnimManager::EAnimManagerEasing::ExpOut);
-                   InfoHasMovedIn = False;
-               }
-               if (GUIPlayer != Null){
-                   BonusEffectVisibility(True, GUIPlayer, InputPlayer);
-                   VignetteVisibility(True, GUIPlayer);
-                   if (GUIPlayer.RaceState == CTmMlPlayer::ERaceState::BeforeStart) {
-                       MapInfoTimeout = Now + 2000;
-                   }
-
-                   foreach (Event in RaceEvents) {
-                       if (Event.Player == GUIPlayer) {
-                           switch (Event.Type) {
-                               case CTmRaceClientEvent::EType::Turbo : {
-                                   EventType = "Turbo";
-                               }
-                               case CTmRaceClientEvent::EType::Horn : {
-                                   EventType = "Horn";
-                               }
-                               case CTmRaceClientEvent::EType::Impact : {
-                                   EventType = "Impact";
-                               }
-                               case CTmRaceClientEvent::EType::WaterSplash : {
-                                   EventType = "WaterSplash";
-                               }
-                               case CTmRaceClientEvent::EType::GlassSmash : {
-                                   EventType = "GlassSmash";
-                               }
-                               case CTmRaceClientEvent::EType::PartDetached : {
-                                   EventType = "PartDetached";
-                               }
-                               default: {
-                                   EventType = "Unknown";
-                               }
-                           }
-                           if (EventType != "Unknown") {
-                               SendCustomEvent("RaceEvent", [EventType, Event.Player.Login]);
-                           }
-                       }
-                   }
-               }
-               else {
-                   VignetteVisibility(False, Null);
-                   BonusEffectVisibility(False, Null, Null);
-               }
-           }
-       }
-       --></script>
-   </manialink>
-   """;
-   Layer.Type = CUILayer::EUILayerType::Normal;
-   UIManager.UIAll.UILayers.add(Layer);
+                else {
+                    BonusFrame.Hide();
+                }
+            }
+        }
+        else {
+            BonusFrame.Hide();
+        }
+    }
+    
+    Void ManageStunts(CTmMlPlayer Player){
+        declare metadata Boolean IncStuntPoints for Map;
+        declare CMlLabel StuntName = (Page.GetFirstChild("Label_StuntsName") as CMlLabel);
+        declare CMlLabel StuntReward = (Page.GetFirstChild("Label_StuntReward") as CMlLabel);
+        declare CMlLabel StuntPoints = (Page.GetFirstChild("Label_StuntPoints") as CMlLabel);
+        if (Player != Null){
+            declare netread Integer ScriptedStuntPoints for Player.Score;
+            declare netread NetStuntData NetStuntEvent for Player.Score;
+            StuntName.Value = NetStuntEvent.StuntName;
+            if (NetStuntEvent.StuntScore > 0){
+                StuntReward.Value = "+" ^ NetStuntEvent.StuntScore;
+            }
+            else {
+                StuntReward.Value = "" ^ NetStuntEvent.StuntScore;
+            }
+            StuntPoints.Value = ScriptedStuntPoints ^ "";
+            if (GameTime - NetStuntEvent.StuntTime >= 2000) {
+                StuntName.Hide();
+                StuntReward.Hide();
+            }
+            else{
+                StuntName.Show();
+                StuntReward.Show();
+            }
+            if (IncStuntPoints){
+                StuntsFrame.Show();
+            }
+            else {
+                StuntsFrame.Hide();
+            }
+        }
+        else {
+            StuntsFrame.Hide();
+        }
+        
+    }
+    
+    Void UpdateEffectPage(){
+        declare Text[] EffectNames;
+        declare metadata Boolean RandEvents for Map;
+        declare metadata Boolean LowGravity for Map;
+        declare metadata Boolean RandCars for Map;
+        declare metadata Boolean IncStuntPoints for Map;
+        declare metadata Boolean UseCrashPenalty for Map;
+        declare metadata Integer EffectVersion for Map;
+        declare metadata Boolean SizeChanges for Map;
+        declare metadata Integer RoundLimit for Map;
+        declare metadata Boolean RandomFinishes for Map;
+        if (LowGravity) {
+            EffectNames.add("LowGravity");
+        }
+        switch (EffectVersion) {
+            case 0: {
+                if (RandEvents){
+                    EffectNames.add("RandomEvents");
+                    EffectNames.add("SizeChanges");
+                }
+            }
+            default: {
+                if (RandEvents) {
+                    EffectNames.add("RandomEvents");
+                }
+                if (SizeChanges) {
+                    EffectNames.add("SizeChanges");
+                }
+            }
+        }
+        
+        if (RandCars) {
+            EffectNames.add("RandomCars");
+        }
+        if (IncStuntPoints) {
+            EffectNames.add("StuntsBonus");
+        }
+        if (UseCrashPenalty) {
+            EffectNames.add("CrashPenalty");
+        }
+        if (!(RoundLimit <= 0) && !(RoundLimit > 3)) {
+            EffectNames.add("RoundsLimit");
+        }
+        if (RandomFinishes){
+            EffectNames.add("RandFinish");
+        }
+        if (EffectNames.count == 0) {
+            MapSettings.Value = "None";
+        }
+        else {
+            MapSettings.Value = TL::Join(", ", EffectNames);
+        }
+    }
+    
+    main() {
+        VignetteFrame = (Page.GetFirstChild("Frame_Vignette") as CMlFrame);
+        BonusFrame = (Page.GetFirstChild("Frame_EffectInfo") as CMlFrame);
+        StuntsFrame = (Page.GetFirstChild("Frame_Stunts") as CMlFrame);
+        declare CMlFrame EffectsFrame = (Page.GetFirstChild("Frame_KEKLEffects") as CMlFrame);
+        declare Boolean InfoHasMovedIn = False;
+        declare Text EventType;
+        MapSettings = (Page.GetFirstChild("Label_EffectList") as CMlLabel);
+        
+        MapInfoTimeout = -1;
+        while(True) {
+            yield;
+            if(Map != Null){
+                if (Map.MapInfo.MapUid != RecentMapUid) {
+                    UpdateEffectPage();
+                    RecentMapUid = Map.MapInfo.MapUid;
+                }
+            }
+            if (MapInfoTimeout >= Now) {
+                if (!InfoHasMovedIn) {
+                    AnimMgr.Add(EffectsFrame, "<frame pos=\"-45 -80\" />", Now, 250, CAnimManager::EAnimManagerEasing::ExpIn);
+                    InfoHasMovedIn = True;
+                }
+            }
+            else if (InfoHasMovedIn) {
+                AnimMgr.Add(EffectsFrame, "<frame pos=\"-45 -110\" />", Now, 250, CAnimManager::EAnimManagerEasing::ExpOut);
+                InfoHasMovedIn = False;
+            }
+            ManageStunts(GUIPlayer);
+            if (GUIPlayer != Null){
+                declare Integer PlayerStuntPoints for GUIPlayer.User;
+                BonusEffectVisibility(True, GUIPlayer, InputPlayer);
+                VignetteVisibility(True, GUIPlayer);
+                if (GUIPlayer.RaceState == CTmMlPlayer::ERaceState::BeforeStart) {
+                    PlayerStuntPoints = 0;
+                    MapInfoTimeout = Now + 2000;
+                }
+                
+                foreach (Event in RaceEvents) {
+                    if (Event.Player == GUIPlayer) {
+                        switch (Event.Type) {
+                            case CTmRaceClientEvent::EType::Turbo : {
+                                EventType = "Turbo";
+                            }
+                            case CTmRaceClientEvent::EType::Horn : {
+                                EventType = "Horn";
+                            }
+                            case CTmRaceClientEvent::EType::Impact : {
+                                EventType = "Impact";
+                            }
+                            case CTmRaceClientEvent::EType::WaterSplash : {
+                                EventType = "WaterSplash";
+                            }
+                            case CTmRaceClientEvent::EType::GlassSmash : {
+                                EventType = "GlassSmash";
+                            }
+                            case CTmRaceClientEvent::EType::PartDetached : {
+                                EventType = "PartDetached";
+                            }
+                            default: {
+                                EventType = "Unknown";
+                            }
+                        }
+                        if (EventType != "Unknown") {
+                            SendCustomEvent("RaceEvent", [EventType, Event.Player.Login]);
+                        }
+                    }
+                }
+            }
+            else {
+                VignetteVisibility(False, Null);
+                BonusEffectVisibility(False, Null, Null);
+            }
+        }
+    }
+    --></script>
+</manialink>
+""";
+    Layer.Type = CUILayer::EUILayerType::Normal;
+    UIManager.UIAll.UILayers.add(Layer);
 }
