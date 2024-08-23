@@ -232,8 +232,8 @@ case CTmModeEvent::EType::WayPoint: {
         SetPlayerPenalty(Event.Player, 0, False);
     }
     if (Event.IsEndRace) {
+        declare Boolean EndedOnWrongFinish for Event.Player.Score;
         if (RandomFinishes && !DidFinishAtTarget(Event.Player.Position, RandFinList[Event.Player.CurrentNbLaps - 1])){
-            declare Boolean EndedOnWrongFinish for Event.Player.Score;
             EndedOnWrongFinish = True;
         }
         declare Better = Scores::SetPlayerBestRaceIfBetter(Event.Player.Score, Event.Player.CurRace, CTmResult::ETmRaceResultCriteria::Time);
@@ -241,11 +241,13 @@ case CTmModeEvent::EType::WayPoint: {
         ComputeLatestRaceScores(False);
         MB_SortScores(CTmMode::ETmScoreSortOrder::TotalPoints);
         TM::EndRace(Event.Player);
-        if (S_TurboFinishTime) {
-            CutOffTimeLimit = GetFinishTimeout();
-        }
-        else if (CutOffTimeLimit <= 0) {
-            CutOffTimeLimit = GetFinishTimeout();
+        if (!EndedOnWrongFinish){
+            if (S_TurboFinishTime) {
+                CutOffTimeLimit = GetFinishTimeout();
+            }
+            else if (CutOffTimeLimit <= 0) {
+                CutOffTimeLimit = GetFinishTimeout();
+            }
         }
     }
     if (Event.IsEndLap) {
@@ -735,7 +737,7 @@ Void ComputeLatestRaceScores(Boolean IsEndOfRound) {
         foreach (Score in Scores) {
             declare Boolean EndedOnWrongFinish for Score;
             declare Boolean ObtainedStuntBonus for Score;
-            if (!IsEndOfRound && EndedOnWrongFinish){
+            if (IsEndOfRound && EndedOnWrongFinish){
                 UIManager.UIAll.SendChat(Score.User.Name ^ "$z$s $F33finished at the wrong finish and got a point penalty!");
             }
             if (Scores::GetPlayerPrevRaceTime(Score) > 0) {
