@@ -9,6 +9,9 @@
     Boolean RandCars;
     Boolean RandEvents;
     Boolean SizeChanges;
+    Boolean CrashPenalty;
+    Boolean StuntBonus;
+    Boolean RandFinish;
     Boolean RallyCar;
     Boolean SnowCar;
     Boolean DesertCar;
@@ -59,17 +62,31 @@ Text KEKLOptionsUI(){
             <quad pos="7 -8" z-index="0" size="60 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="74f"/>
             <frame id="Frame_RegularOptions">
                 <label pos="-20 43" z-index="0" size="50 10" text="Map Options" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Medium" textsize="4"/>
-                <label pos="-20 30" z-index="0" size="50 10" text="Low Gravity" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
-                <quad pos="15 30" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Gravity"/>
-                <label pos="-20 20" z-index="0" size="50 10" text="Rand Events" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
-                <quad pos="15 20" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Effects"/>
-                <label pos="-20 10" z-index="0" size="50 10" text="Size Changes" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
-                <quad pos="15 10" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Size"/>
-                <label pos="-20 0" z-index="0" size="50 10" text="Rand Cars" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
-                <quad pos="15 00" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Cars"/>
-                <quad pos="25 00" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons128x32_1" substyle="Settings" id="Toggle_CarSettings"/>
-                <label pos="-23 0" z-index="0" size="50 10" text="Round Limit" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3" hidden="1"/>
-                <entry pos="15 0" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" substyle="Check" id="Entry_Rounds" default="-1" hidden="1"/>
+                    <quad pos="-0.5 36" z-index="0" size="10 10" bgcolor="FFFA" halign="right" valign="center" style="Icons64x64_1" substyle="ArrowPrev" id="Button_PageLeft" scriptevents="1"/>
+                    <label pos="0 36.5" z-index="0" size="6 6" text="1" halign="center" valign="center" textemboss="1" textfont="RajdhaniMono" scale="1.3" id="Label_PageNumber"/>
+                    <quad pos="0.5 36" z-index="0" size="10 10" bgcolor="FFFA" halign="left" valign="center" style="Icons64x64_1" substyle="ArrowNext" id="Button_PageRight" scriptevents="1"/>
+                <frame id="Frame_Page1">
+                    <label pos="-20 30" z-index="0" size="50 10" text="Low Gravity" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
+                    <quad pos="15 30" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Gravity"/>
+                    <label pos="-20 20" z-index="0" size="50 10" text="Rand Events" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
+                    <quad pos="15 20" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Effects"/>
+                    <label pos="-20 10" z-index="0" size="50 10" text="Size Changes" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
+                    <quad pos="15 10" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Size"/>
+                    <label pos="-20 0" z-index="0" size="50 10" text="Rand Cars" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
+                    <quad pos="15 00" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_Cars"/>
+                    <quad pos="25 00" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons128x32_1" substyle="Settings" id="Toggle_CarSettings"/>
+                </frame>
+                <frame id="Frame_Page2" hidden="1">
+                    <label pos="-20 30" z-index="0" size="50 10" text="CrashPenalty" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
+                    <quad pos="15 30" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_CrashPen"/>
+                    <label pos="-20 20" z-index="0" size="50 10" text="Round Limit" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
+                    <entry pos="15 20" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" substyle="Check" id="Entry_Rounds" default="-1"/>
+                    <label pos="-20 10" z-index="0" size="50 10" text="Stunt Bonus" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
+                    <quad pos="20 5" z-index="0" size="7 7" bgcolor="FFFA" valign="bottom" style="Icons64x64_2" substyle="ServerNotice" halign="right" id="Quad_WIPWarning"/>
+                    <quad pos="15 10" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_StuntBonus"/>
+                    <label pos="-20 0" z-index="0" size="50 10" text="Rand Finish" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Bold" textsize="3"/>
+                    <quad pos="15 0" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" scriptevents="1" style="Icons64x64_1" substyle="Check" id="Toggle_RandFinish"/>
+                </frame>
             </frame>
             <frame id="Frame_CarOptions" hidden="1">
                 <label pos="-20 43" z-index="0" size="50 10" text="Car Options" halign="left" valign="center" textemboss="1" textfont="Gotham/Gotham-Medium" textsize="4"/>
@@ -109,11 +126,16 @@ Text KEKLOptionsUI(){
         <script><!--
         #Include "TextLib" as TL
 
+        #Const MaxPages 2
+
         #Struct K_KEKLOptions {
             Boolean LowGravity;
             Boolean RandCars;
             Boolean RandEvents;
             Boolean SizeChanges;
+            Boolean CrashPenalty;
+            Boolean StuntBonus;
+            Boolean RandFinish;
             Boolean RallyCar;
             Boolean SnowCar;
             Boolean DesertCar;
@@ -127,6 +149,21 @@ Text KEKLOptionsUI(){
             Boolean TrafficCar;
             Boolean FlippyCar;
             Integer RoundLimit;
+        }
+
+        Void UpdatePluginPage(Integer PageNumber) {
+            declare CMlFrame Page1 = (Page.GetFirstChild("Frame_Page1") as CMlFrame);
+            declare CMlFrame Page2 = (Page.GetFirstChild("Frame_Page2") as CMlFrame);
+            switch (PageNumber) {
+                case 1: {
+                    Page1.Show();
+                    Page2.Hide();
+                }
+                case 2: {
+                    Page1.Hide();
+                    Page2.Show();
+                }
+            }
         }
         
         main () {
@@ -146,11 +183,16 @@ Text KEKLOptionsUI(){
             declare CMlQuad StadiumCarQuad = (Page.GetFirstChild("Toggle_Stadium") as CMlQuad);
             declare CMlQuad TrafficCarQuad = (Page.GetFirstChild("Toggle_Traffic") as CMlQuad);
             declare CMlQuad FlippyCarQuad = (Page.GetFirstChild("Toggle_Flippy") as CMlQuad);
+            declare CMlQuad CrashPenaltyQuad = (Page.GetFirstChild("Toggle_CrashPen") as CMlQuad);
+            declare CMlQuad RandFinishQuad = (Page.GetFirstChild("Toggle_RandFinish") as CMlQuad);
+            declare CMlQuad StuntBonusQuad = (Page.GetFirstChild("Toggle_StuntBonus") as CMlQuad);
             declare CMlEntry RoundLimitEnt = (Page.GetFirstChild("Entry_Rounds") as CMlEntry);
             declare CMlFrame OptionsFrame = (Page.GetFirstChild("Frame_KEKLEditor") as CMlFrame);
             declare CMlFrame SettingsFrame = (Page.GetFirstChild("Frame_RegularOptions") as CMlFrame);
             declare CMlFrame CarsFrame = (Page.GetFirstChild("Frame_CarOptions") as CMlFrame);
+            declare CMlLabel PageLabel = (Page.GetFirstChild("Label_PageNumber") as CMlLabel);
             declare K_KEKLOptions MapOptions for Page;
+            declare Integer PageNumber = 1;
             
             RoundLimitEnt.Value = MapOptions.RoundLimit ^ "";
             RandCarsQuad.StyleSelected = MapOptions.RandCars;
@@ -169,13 +211,39 @@ Text KEKLOptionsUI(){
             StadiumCarQuad.StyleSelected = MapOptions.StadiumCar;
             TrafficCarQuad.StyleSelected = MapOptions.TrafficCar;
             FlippyCarQuad.StyleSelected = MapOptions.FlippyCar;
+            CrashPenaltyQuad.StyleSelected = MapOptions.CrashPenalty;
+            StuntBonusQuad.StyleSelected = MapOptions.StuntBonus;
+            RandFinishQuad.StyleSelected = MapOptions.RandFinish;
             while(True) {
                 yield;
                 foreach(Event in PendingEvents) {
                     if(Event.Type == CGameManialinkScriptEvent::Type::MouseClick)	{
                         switch (Event.ControlId) {
+                            case "Button_PageLeft": {
+                                if (!(PageNumber - 1 < 1)){
+                                    PageNumber -= 1;
+                                }
+                                PageLabel.Value = PageNumber ^ "";
+                                UpdatePluginPage(PageNumber);
+                            }
+                            case "Button_PageRight": {
+                                if (!(PageNumber + 1 > MaxPages)){
+                                    PageNumber += 1;
+                                }
+                                PageLabel.Value = PageNumber ^ "";
+                                UpdatePluginPage(PageNumber);
+                            }
                             case "Button_ToggleKEKLMenu": {
                                 OptionsFrame.Visible = !OptionsFrame.Visible;
+                            }
+                            case "Toggle_CrashPen": {
+                                CrashPenaltyQuad.StyleSelected = !CrashPenaltyQuad.StyleSelected;
+                            }
+                            case "Toggle_RandFinish": {
+                                RandFinishQuad.StyleSelected = !RandFinishQuad.StyleSelected;
+                            }
+                            case "Toggle_StuntBonus": {
+                                StuntBonusQuad.StyleSelected = !StuntBonusQuad.StyleSelected;
                             }
                             case "Toggle_Gravity": {
                                 LowGravityQuad.StyleSelected = !LowGravityQuad.StyleSelected;
@@ -232,6 +300,12 @@ Text KEKLOptionsUI(){
                         }	
                     }
                 }
+                if (TL::ToInteger(RoundLimitEnt.Value) > 3){
+                    RoundLimitEnt.Value = "3";
+                }
+                else if (TL::ToInteger(RoundLimitEnt.Value) < -1){
+                    RoundLimitEnt.Value = "-1";
+                }
                 MapOptions.LowGravity = LowGravityQuad.StyleSelected;
                 MapOptions.SizeChanges = SizeEventsQuad.StyleSelected;
                 MapOptions.RandEvents = RandEventsQuad.StyleSelected;
@@ -249,6 +323,9 @@ Text KEKLOptionsUI(){
                 MapOptions.TrafficCar = TrafficCarQuad.StyleSelected;
                 MapOptions.FlippyCar = FlippyCarQuad.StyleSelected;
                 MapOptions.RoundLimit = TL::ToInteger(RoundLimitEnt.Value);
+                MapOptions.CrashPenalty = CrashPenaltyQuad.StyleSelected;
+                MapOptions.StuntBonus = StuntBonusQuad.StyleSelected;
+                MapOptions.RandFinish = RandFinishQuad.StyleSelected;
             }
         }
         --></script>
@@ -261,8 +338,11 @@ main() {
     declare metadata Boolean RandEvents for Map;
     declare metadata Boolean SizeChanges for Map;
     declare metadata Boolean RandCars for Map;
+    declare metadata Boolean UseCrashPenalty for Map;
     declare metadata Integer EffectVersion for Map;
     declare metadata Integer RoundLimit for Map;
+    declare metadata Boolean IncStuntPoints for Map;
+    declare metadata Boolean RandomFinishes for Map;
     declare metadata Boolean[Integer] EnabledCars for Map;
     
     switch (EffectVersion){
@@ -286,11 +366,16 @@ main() {
     // Setup and sync settings to UI
     OptionsLayer = UILayerCreate();
     declare K_KEKLOptions MapOptions for OptionsLayer.LocalPage;
+    declare Integer FinishCount for OptionsLayer.LocalPage;
+    declare Boolean MultiFinishState;
+    declare Boolean StuntsWIPState;
+    MapOptions.StuntBonus = IncStuntPoints;
     MapOptions.RandCars = RandCars;
     MapOptions.LowGravity = LowGravity;
     MapOptions.RandEvents = RandEvents;
 	MapOptions.SizeChanges = SizeChanges;
     MapOptions.RoundLimit = RoundLimit;
+    MapOptions.CrashPenalty = UseCrashPenalty;
     MapOptions.StadiumCar = EnabledCars[0];
     MapOptions.CanyonCar = EnabledCars[1];
     MapOptions.ValleyCar = EnabledCars[2];
@@ -303,6 +388,9 @@ main() {
     MapOptions.BayCar = EnabledCars[9];
     MapOptions.TrafficCar = EnabledCars[10];
     MapOptions.FlippyCar = EnabledCars[11];
+    MapOptions.RandFinish = RandomFinishes;
+    MultiFinishState = RandomFinishes;
+    StuntsWIPState = IncStuntPoints;
     OptionsLayer.ManialinkPage = KEKLOptionsUI();
     while (True) {
         // Sync settings from UI
@@ -315,6 +403,8 @@ main() {
         SizeChanges = MapOptions.SizeChanges;
         RandEvents = MapOptions.RandEvents;
         RoundLimit = MapOptions.RoundLimit;
+        IncStuntPoints = MapOptions.StuntBonus;
+        UseCrashPenalty = MapOptions.CrashPenalty;
         EnabledCars[0] = MapOptions.StadiumCar;
         EnabledCars[1] = MapOptions.CanyonCar;
         EnabledCars[2] = MapOptions.ValleyCar;
@@ -327,5 +417,31 @@ main() {
         EnabledCars[9] = MapOptions.BayCar;
         EnabledCars[10] = MapOptions.TrafficCar;
         EnabledCars[11] = MapOptions.FlippyCar;
+        RandomFinishes = MapOptions.RandFinish;
+        if (StuntsWIPState != IncStuntPoints){
+            if (IncStuntPoints){
+                Dialog_Message("This option is experimental and may experience minor changes in the future.");
+            }
+            StuntsWIPState = IncStuntPoints;
+        }
+        if (MultiFinishState != RandomFinishes){
+            if (RandomFinishes){
+                declare Integer FinishCount;
+                foreach (Anchor in AnchorData){
+                    if (Anchor.Block != Null){
+                        if (Anchor.Block.BlockModel.WaypointType == CBlockModel::EWayPointType::Finish || Anchor.Block.BlockModel.WaypointType == CBlockModel::EWayPointType::StartFinish){
+                            FinishCount += 1;
+                        }
+                    }
+                    else if (Anchor.DefaultTag == "Goal" || Anchor.DefaultTag == "StartFinish"){
+                        FinishCount += 1;
+                    }
+                }
+                if (FinishCount < 2){
+                    Dialog_Message("You'll want at least two finishes for the RandomFinish effect!\n(multilap blocks included)\nMake sure all finishes on the map have triggers!");
+                }
+            }
+            MultiFinishState = RandomFinishes;
+        }
     }
 }
