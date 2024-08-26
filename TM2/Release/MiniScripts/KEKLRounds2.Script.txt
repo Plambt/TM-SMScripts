@@ -178,9 +178,7 @@ SetPlayerSettings(Player);
 }
 foreach(Score in Scores){
     declare Boolean EndedOnWrongFinish for Score;
-    declare Boolean ObtainedStuntBonus for Score;
     EndedOnWrongFinish = False;
-    ObtainedStuntBonus = False;
 }
 ***
 
