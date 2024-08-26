@@ -33,7 +33,7 @@
 #Const C_HudModulePath "Nadeo/TrackMania/Rounds/Hud.Module.Gbx" ///< Path to the hud module
 #Const C_ManiaAppUrl "file://Media/ManiaApps/Nadeo/TrackMania/Rounds/Rounds.Script.txt"
 #Const C_BaseStuntWorth 30
-#Const C_SimpleStuntWorth 15
+#Const C_SimpleStuntWorth 5
 #Const C_WreckStuntWorth 5
 #Const C_RotationalStuntBonus 15
 #Const C_CarIndex [0 => "StadiumCar",1 => "CanyonCar",2 => "ValleyCar",3 => "LagoonCar",4 => "DesertCar",5 => "RallyCar",6 => "SnowCar",7 => "CoastCar",8 => "IslandCar",9 => "BayCar", 10 => "TrafficCar", 11 => "FlippyCar"]
@@ -275,6 +275,7 @@ case CTmModeEvent::EType::Stunt: {
 case CTmModeEvent::EType::OnPlayerAdded: {
     if (Event.Player != Null) {
         SetPlayerSettings(Event.Player);
+        SetupFinishMarkerForPlayer(Event.Player);
     }
 }
 }
@@ -406,6 +407,21 @@ Void SetupGlobalFinishMarker(){
             <quad pos="0 0" z-index="0" size="10 10" bgcolor="FFFA" halign="center" valign="center" style="Icons128x32_1" substyle="RT_Rounds"/>
             <quad pos="0 0" z-index="0" size="20 20" bgcolor="FFFA" halign="center" valign="center" style="Bgs1InRace" substyle="Glow"/>
         </frame>
+        <script><!--
+        main(){
+            declare metadata Boolean RandomFinishes for Map;
+            declare CMlFrame MarkerFrame = (Page.GetFirstChild("Frame_FinishMarker") as CMlFrame);
+            while(True){
+                yield();
+                if (RandomFinishes){
+                    MarkerFrame.Show();
+                }
+                else {
+                    MarkerFrame.Hide();
+                }
+            }
+        }
+        --></script>
     </manialink>
     """;
     UIManager.UIAll.UILayers.add(FinishMarker);
@@ -504,8 +520,11 @@ Void RegisterStunt(CTmModeEvent _Event){
             StuntType = 0;
             CurStuntPoints = C_BaseStuntWorth;
         }
-        CurStuntPoints += (C_RotationalStuntBonus * (_Event.Angle / 180));
-        CurStuntPoints = (CurStuntPoints * (_Event.Combo + 1));
+        // Don't allow combos for 
+        if (StuntType != 2){
+            CurStuntPoints += (C_RotationalStuntBonus * (_Event.Angle / 180));
+            CurStuntPoints = (CurStuntPoints * (_Event.Combo + 1));
+        }
     }
     NetStuntEvent.StuntScore = CurStuntPoints;
     // ^ " " ^ _Event.Angle ^ " x" ^ _Event.Combo ^ "!!!"
@@ -730,13 +749,11 @@ Void ComputeLatestRaceScores(Boolean IsEndOfRound) {
                     }
                 }
             }
-            declare Boolean ObtainedStuntBonus for StuntWinner;
-            ObtainedStuntBonus = True;
         }
         
         foreach (Score in Scores) {
             declare Boolean EndedOnWrongFinish for Score;
-            declare Boolean ObtainedStuntBonus for Score;
+            declare netwrite Integer ScriptedStuntPoints for Score;
             if (IsEndOfRound && EndedOnWrongFinish){
                 UIManager.UIAll.SendChat(Score.User.Name ^ "$z$s $F33finished at the wrong finish and got a point penalty!");
             }
@@ -744,12 +761,10 @@ Void ComputeLatestRaceScores(Boolean IsEndOfRound) {
                 declare Points = 0;
                 declare PointsRepartition = Scores::GetPointsRepartition();
                 declare Integer PointDifference;
-                declare Integer StuntBonus;
                 declare Integer WrongFinishScore;
                 if (PointsRepartition.existskey(0) && PointsRepartition.existskey(1)){
                     PointDifference = PointsRepartition[0] - PointsRepartition[1];
                     WrongFinishScore = PointDifference * 2;
-                    StuntBonus = PointDifference / 2;
                 }
                 if (PointsRepartition.count > 0) {
                     if (PointsRepartition.existskey(I)) {
@@ -757,12 +772,11 @@ Void ComputeLatestRaceScores(Boolean IsEndOfRound) {
                     } else {
                         Points = PointsRepartition[PointsRepartition.count - 1];
                     }
-                    if (ObtainedStuntBonus){
-                        UIManager.UIAll.SendChat(Score.User.Name ^ "$z$s has won the stunt portion of this round with a score of " ^ StuntWinnerPoints ^ " and got a bonus of " ^ StuntBonus ^ " points!");
-                        Points += StuntBonus;
-                    }
                     if (EndedOnWrongFinish){
                         Points = WrongFinishScore;
+                    }
+                    if (IncStuntPoints && StuntWinnerPoints != 0){
+                        Points = Points * (ScriptedStuntPoints / StuntWinnerPoints);
                     }
                 }
                 //Score.PrevRaceDeltaPoints = Points;
@@ -774,7 +788,6 @@ Void ComputeLatestRaceScores(Boolean IsEndOfRound) {
             }
             if (IsEndOfRound){
                 EndedOnWrongFinish = False;
-                ObtainedStuntBonus = False;
             }
         }
     }
