@@ -757,6 +757,9 @@ Void ComputeLatestRaceScores(Boolean IsEndOfRound) {
                     }
                 }
             }
+            if (StuntWinner != Null && StuntWinnerPoints != 0){
+                UIManager.UIAll.SendChat("$z$s$fff»» " ^ StuntWinner.User.Name ^ "$z$s got the most stunt points of " ^ StuntWinnerPoints ^ " this round!");
+            }
             /* 
             if (StuntWinner != Null){
                 UIManager.UIAll.SendChat("$Debug: " ^ StuntWinner.User.Name ^ "$z$s Got the highest score of " ^ StuntWinnerPoints);
@@ -767,7 +770,7 @@ Void ComputeLatestRaceScores(Boolean IsEndOfRound) {
             declare Boolean EndedOnWrongFinish for Score;
             declare netwrite Integer ScriptedStuntPoints for Score;
             if (IsEndOfRound && EndedOnWrongFinish){
-                UIManager.UIAll.SendChat(Score.User.Name ^ "$z$s $F33finished at the wrong finish and got a point penalty!");
+                UIManager.UIAll.SendChat("$z$s$fff»» " ^ Score.User.Name ^ "$z$s $F33finished at the wrong finish and got a point penalty!");
             }
             if (Scores::GetPlayerPrevRaceTime(Score) > 0) {
                 declare Points = 0;
@@ -790,7 +793,7 @@ Void ComputeLatestRaceScores(Boolean IsEndOfRound) {
                     if (IsEndOfRound){
                         if (IncStuntPoints && StuntWinnerPoints != 0){
                             Points = ML::NearestInteger(ML::NearestReal(Points) * (ML::NearestReal(ScriptedStuntPoints) / ML::NearestReal(StuntWinnerPoints)));
-                            UIManager.GetUI(Score.User).SendChat("$z$s$fffYour stunt points of " ^ ScriptedStuntPoints ^ " have now been factored into your round score!");
+                            UIManager.GetUI(Score.User).SendChat("$z$s$fff»$z$s Your stunt points of " ^ ScriptedStuntPoints ^ " have now been factored into your round score!");
                             //UIManager.UIAll.SendChat("$Debug: " ^ Score.User.Name ^ "$z$s Got a score of " ^ ScriptedStuntPoints ^ ". New points: " ^ Points);
                         }
                     }
