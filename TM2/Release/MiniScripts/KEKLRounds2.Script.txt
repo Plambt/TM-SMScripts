@@ -23,6 +23,7 @@
 #Setting S_UseTieBreak			True	as _("Use tie-break :")	///< Continue to play the map until the tie is broken
 #Setting S_WarmUpNb				0	as _("Number of warm up :")
 #Setting S_WarmUpDuration	0	as _("Duration of one warm up :")
+#Setting S_MaximumStuntRemoval 0.33 as _("Maximum Stunt Removal :")
 
 #Setting S_ScriptEnvironment "production"/*/"development"*/
 
@@ -172,7 +173,9 @@ if (RandomFinishes){
 foreach (Player in AllPlayers) {
 SetupFinishMarkerForPlayer(Player);
 declare netwrite Integer ScriptedStuntPoints for Player.Score;
+declare Integer CheckpointStuntSnapshot for Player.Score;
 ScriptedStuntPoints = 0;
+CheckpointStuntSnapshot = 0;
 SetPlayerPenalty(Player, 0, False);
 SetPlayerSettings(Player);
 }
@@ -225,7 +228,10 @@ declare Processed = Events::Valid(Event);
 if (!Processed) continue;
 switch (Event.Type) {
 case CTmModeEvent::EType::WayPoint: {
+    declare Integer CheckpointStuntSnapshot for Event.Player.Score;
+    declare netwrite Integer ScriptedStuntPoints for Event.Player.Score;
     declare Boolean CanSkipPenalty for Event.Player.User;
+    CheckpointStuntSnapshot = ScriptedStuntPoints;
     if (CanSkipPenalty){
         SetPlayerPenalty(Event.Player, 0, False);
     }
@@ -506,15 +512,17 @@ Vec3[Integer] GetRandomFinArray(){
 }
 
 Void RegisterStunt(CTmModeEvent _Event){
+    declare Integer CheckpointStuntSnapshot for _Event.Player.Score;
     declare netwrite Integer ScriptedStuntPoints for _Event.Player.Score;
     declare netwrite NetStuntData NetStuntEvent for _Event.Player.Score;
     declare Text StuntName = TL::Replace(_Event.StuntFigure ^ "", "::EStuntFigure::", "");
     declare Integer CurStuntPoints;
     declare Integer StuntType = 0;
     if (StuntName == "RespawnPenalty"){
+        StuntName = "SegmentRespawn";
         StuntType = 1;
-        CurStuntPoints = -1 * (ScriptedStuntPoints / 3);
-    }
+        CurStuntPoints = -1 * (ScriptedStuntPoints - CheckpointStuntSnapshot);
+    }   
     else{
         if (StuntName == "StraightJump"){
             StuntType = 2;
@@ -742,6 +750,8 @@ Void ComputeLatestRaceScores(Boolean IsEndOfRound) {
     } 
     // Points distributed between all players
     else {		
+        declare Text[Integer] PositionTerms = [0 => "st", 1 => "nd", 2 => "rd"];
+        declare Text PositionTerm = "th";
         declare I = 0;
 
         declare metadata Boolean IncStuntPoints for Map;
@@ -767,6 +777,13 @@ Void ComputeLatestRaceScores(Boolean IsEndOfRound) {
         }
         
         foreach (Score in Scores) {
+            if (I < 3){
+                PositionTerm = PositionTerms[I];
+            }
+            else {
+                PositionTerm = "th";
+            }
+            
             declare Boolean EndedOnWrongFinish for Score;
             declare netwrite Integer ScriptedStuntPoints for Score;
             if (IsEndOfRound && EndedOnWrongFinish){
@@ -790,12 +807,19 @@ Void ComputeLatestRaceScores(Boolean IsEndOfRound) {
                     if (EndedOnWrongFinish){
                         Points = WrongFinishScore;
                     }
-                    if (IsEndOfRound){
-                        if (IncStuntPoints && StuntWinnerPoints != 0){
-                            Points = ML::NearestInteger(ML::NearestReal(Points) * (ML::NearestReal(ScriptedStuntPoints) / ML::NearestReal(StuntWinnerPoints)));
-                            UIManager.GetUI(Score.User).SendChat("$z$s$fff»$z$s Your stunt points of " ^ ScriptedStuntPoints ^ " have now been factored into your round score!");
-                            //UIManager.UIAll.SendChat("$Debug: " ^ Score.User.Name ^ "$z$s Got a score of " ^ ScriptedStuntPoints ^ ". New points: " ^ Points);
+                    if (IncStuntPoints){
+                        declare Integer TempRoundScore = ML::NearestInteger(ML::NearestReal(Points) - (ML::NearestReal(Points) * S_MaximumStuntRemoval));
+                        if (StuntWinnerPoints != 0 && IsEndOfRound && StuntWinnerPoints != 0){
+                            declare Real PointFactor = (ML::NearestReal(ScriptedStuntPoints) / ML::NearestReal(StuntWinnerPoints));
+                            declare Real StuntRoundScore = (ML::NearestReal(Points) * PointFactor) * S_MaximumStuntRemoval;
+                            declare Integer FinalRoundScore = ML::NearestInteger(ML::NearestReal(Points) - (ML::NearestReal(Points) * S_MaximumStuntRemoval) + StuntRoundScore);
+                            Points = FinalRoundScore;
+                            UIManager.GetUI(Score.User).SendChat("$z$s$fff»$z$s You gained an additional " ^ ML::NearestInteger(StuntRoundScore) ^ " Points to your " ^ TempRoundScore ^ " points from placing " ^ (I + 1) ^  PositionTerm ^ " with " ^ ScriptedStuntPoints ^ " Stunt Points.");
                         }
+                        else {
+                            Points = TempRoundScore;
+                        }
+                        //UIManager.UIAll.SendChat("$Debug: " ^ Score.User.Name ^ "$z$s Got a score of " ^ ScriptedStuntPoints ^ ". New points: " ^ Points);
                     }
                 }
                 //Score.PrevRaceDeltaPoints = Points;
