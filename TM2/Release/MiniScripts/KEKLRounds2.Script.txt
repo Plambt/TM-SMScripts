@@ -136,7 +136,7 @@ foreach (Player in AllPlayers) {
 SetPlayerSettings(Player);
 }
 
-FinishMarker.IsVisible = False;
+AddAndRemoveMarker(True);
 
 
 // ---------------------------------- //
@@ -296,7 +296,7 @@ UpdateScoresTableFooter(S_PointsLimit, S_RoundsPerMap, S_MapsPerMatch);
 
 ***Match_EndRound***
 ***
-FinishMarker.IsVisible = False;
+AddAndRemoveMarker(True);
 TM::WaitRaceAll();
 CutOffTimeLimit = -1;
 
@@ -395,6 +395,17 @@ if (ChannelProgression::IsEnabled()) {
 }
 ***
 
+Void AddAndRemoveMarker(Boolean DoRemove){
+    if (DoRemove){
+        FinishMarker.IsVisible = False;
+        UIManager.UIAll.UILayers.remove(FinishMarker);
+    }
+    else {
+        FinishMarker.IsVisible = True;
+        UIManager.UIAll.UILayers.add(FinishMarker);
+    }
+}
+
 Void SetupGlobalFinishMarker(){
     FinishMarker = UIManager.UILayerCreate();
     FinishMarker.Type = CUILayer::EUILayerType::Markers;
@@ -422,14 +433,13 @@ Void SetupGlobalFinishMarker(){
         --></script>
     </manialink>
     """;
-    UIManager.UIAll.UILayers.add(FinishMarker);
 }
 
 Void SetupFinishMarkerForPlayer(CTmPlayer _Player){
     declare metadata Boolean RandomFinishes for Map;
     if (RandomFinishes){
         UIManager.UIAll.LabelsVisibility = CUIConfig::EHudVisibility::MarkersOnly;
-        FinishMarker.IsVisible = True;
+        AddAndRemoveMarker(False);
         declare CUIConfig PlayerUI = UIManager.GetUI(_Player);
         declare Integer FinIndex;
         if (MapIsLapRace){
@@ -450,7 +460,7 @@ Void SetupFinishMarkerForPlayer(CTmPlayer _Player){
     }
     else {
         UIManager.UIAll.LabelsVisibility = CUIConfig::EHudVisibility::Default;
-        FinishMarker.IsVisible = False;
+        AddAndRemoveMarker(True);
     }
     
 }
@@ -747,6 +757,10 @@ Void ComputeLatestRaceScores(Boolean IsEndOfRound) {
                     }
                 }
             }
+            /* 
+            if (StuntWinner != Null){
+                UIManager.UIAll.SendChat("$Debug: " ^ StuntWinner.User.Name ^ "$z$s Got the highest score of " ^ StuntWinnerPoints);
+            }*/
         }
         
         foreach (Score in Scores) {
@@ -773,8 +787,12 @@ Void ComputeLatestRaceScores(Boolean IsEndOfRound) {
                     if (EndedOnWrongFinish){
                         Points = WrongFinishScore;
                     }
-                    if (IncStuntPoints && StuntWinnerPoints != 0){
-                        Points = Points * (ScriptedStuntPoints / StuntWinnerPoints);
+                    if (IsEndOfRound){
+                        if (IncStuntPoints && StuntWinnerPoints != 0){
+                            Points = ML::NearestInteger(ML::NearestReal(Points) * (ML::NearestReal(ScriptedStuntPoints) / ML::NearestReal(StuntWinnerPoints)));
+                            UIManager.GetUI(Score.User).SendChat("$z$s$fffYour stunt points of " ^ ScriptedStuntPoints ^ " have now been factored into your round score!");
+                            //UIManager.UIAll.SendChat("$Debug: " ^ Score.User.Name ^ "$z$s Got a score of " ^ ScriptedStuntPoints ^ ". New points: " ^ Points);
+                        }
                     }
                 }
                 //Score.PrevRaceDeltaPoints = Points;
