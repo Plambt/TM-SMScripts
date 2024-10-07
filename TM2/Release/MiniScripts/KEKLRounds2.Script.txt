@@ -1,6 +1,6 @@
 //#RequireContext CTmMode
 
-#Extends "Modes/TrackMania/Base/RoundsBase2.Script.txt"
+#Extends "Modes/TrackMania/Base/RoundsBase2TMAllMaker.Script.txt"
 
 #Const CompatibleMapTypes	"Race"
 #Const Version							"2018-03-08"
@@ -37,7 +37,7 @@
 #Const C_SimpleStuntWorth 5
 #Const C_WreckStuntWorth 5
 #Const C_RotationalStuntBonus 15
-#Const C_CarIndex [0 => "StadiumCar",1 => "CanyonCar",2 => "ValleyCar",3 => "LagoonCar",4 => "DesertCar",5 => "RallyCar",6 => "SnowCar",7 => "CoastCar",8 => "IslandCar",9 => "BayCar", 10 => "TrafficCar", 11 => "FlippyCar"]
+#Const C_CarIndex [0 => "trackmania:stadiumcar",1 => "trackmania:canyoncar",2 => "trackmania:valleycar",3 => "trackmania:lagooncar",4 => "trackmania:desertcar",5 => "trackmania:rallycar",6 => "trackmania:snowcar",7 => "trackmania:coastcar",8 => "trackmania:islandcar",9 => "trackmania:baycar", 10 => "trackmania:trafficcar", 11 => "tmall:canyoncarflippy"]
 
 #Const Description _("""$fffA moddified version of Nadeo's rounds script which allows mappers to add (usually) fun effects to their maps!!!""")
 
@@ -50,7 +50,6 @@
 declare Integer[] UsedCars;
 declare Integer[] MapCars;
 declare Ident[Text] CarModels;
-declare Ident RoundCar;
 declare Vec3[Integer] RandFinList;
 declare Vec3 PreviousFirstFin;
 declare CUILayer FinishMarker;
@@ -83,20 +82,19 @@ Hud_Load(C_HudModulePath);
 MB_SortScores(CTmMode::ETmScoreSortOrder::TotalPoints);
 ***
 
+***TMAll_ItemList***
+***
+declare PlayerModels_Server::K_Options NewOptions;
+NewOptions.LoadingMode = PlayerModels_Server::C_LoadingMode_LoadEverything;
+PlayerModels_Server::Load(This, NewOptions);
+***
+
 ***Match_InitServer***
 ***
+declare Text RoundCar for Teams[0];
 declare PrevPointsLimit = S_PointsLimit - 1;
 declare PrevRoundsPerMap = S_RoundsPerMap - 1;
 declare PrevMapsPerMatch = S_MapsPerMatch - 1;
-foreach (Car in C_CarIndex) {
-if (Car != "FlippyCar"){
-CarModels[Car] = ItemList_AddWithSkin("Vehicles/" ^ Car ^ ".Item.Gbx", "Default");
-}
-else {
-CarModels[Car] = ItemList_AddWithSkin("VehiclesExtra/CanyonCarFlippy.Item.Gbx", "Default");
-}
-
-}
 ***
 
 ***Match_StartServer***
@@ -132,7 +130,7 @@ EnableCheckpointBonus = (SizeChanges || RandEvents);
 }
 MapCars = GetMapCars();
 UsedCars.clear();
-RoundCar = NullId;
+RoundCar = "Default";
 foreach (Player in AllPlayers) {
 SetPlayerSettings(Player);
 }
@@ -161,7 +159,7 @@ Rounds_RoundsPerformance = [];
 ***
 declare metadata Boolean RandCars for Map;
 declare metadata Boolean RandomFinishes for Map;
-RoundCar = NullId;
+RoundCar = "Default";
 if (RandCars) {
 SetRoundCar();
 }
@@ -401,6 +399,18 @@ if (ChannelProgression::IsEnabled()) {
 }
 ***
 
+***TMAll_AfterAutoGameplay***
+***
+declare Text RoundCar for Teams[0];
+log(RoundCar);
+if (RoundCar == "Default" || RoundCar == ""){
+    PlayerModels_Server::AssignModel(_Player);
+}
+else {
+    PlayerModels_Server::AssignModel(_Player, RoundCar);
+}
+***
+
 Void AddAndRemoveMarker(Boolean DoRemove){
     if (DoRemove){
         FinishMarker.IsVisible = False;
@@ -580,23 +590,13 @@ Void TogglePlayerInput(CTmPlayer _Player, Boolean _HasControl, Boolean _CanSteer
 }
 
 Void SetPlayerSettings(CTmPlayer _Player){
-    declare metadata Boolean UseCrashPenalty for Map;
-    declare metadata Boolean LowGravity for Map;
     declare Integer PenaltyTimeout for _Player.User;
-    _Player.EnableStuntMode = True;
-    if (LowGravity) {
-        _Player.GravityCoef = 0.5;
-    }
-    else {
-        _Player.GravityCoef = 1.0;
-    }
     if (PenaltyTimeout < Now || PenaltyTimeout == 0) {
         TogglePlayerInput(_Player, True, True);
     }
     else {
         TogglePlayerInput(_Player, False, False);
     }
-    _Player.ForceModelId = RoundCar;
 }
 
 Void SetPlayerPenalty(CTmPlayer _Player, Integer _PenaltyTime, Boolean _CanSkipPen){
@@ -627,6 +627,7 @@ Integer[] GetMapCars(){
     return [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 }
 Void SetRoundCar(){
+    declare Text RoundCar for Teams[0];
     declare Integer CarIndex;
     declare Boolean CarFound;
     if (UsedCars.count == MapCars.count) {
@@ -640,7 +641,7 @@ Void SetRoundCar(){
         }
     }
     UsedCars.add(CarIndex);
-    RoundCar = CarModels[C_CarIndex[CarIndex]];
+    RoundCar = C_CarIndex[CarIndex];
 }
 
 // ---------------------------------- //
