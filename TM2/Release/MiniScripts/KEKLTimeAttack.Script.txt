@@ -1,30 +1,31 @@
 //#RequireContext CTmMode
-#Extends "Modes/TrackMania/TimeAttack.Script.txt"
+#Extends "Modes/TrackMania/TimeAttack_TMAM.Script.txt"
 
 #Include "MathLib" as ML
 #Include "TextLib" as TL
 
-#Const C_CarIndex [0 => "StadiumCar",1 => "CanyonCar",2 => "ValleyCar",3 => "LagoonCar",4 => "DesertCar",5 => "RallyCar",6 => "SnowCar",7 => "CoastCar",8 => "IslandCar",9 => "BayCar", 10 => "TrafficCar", 11 => "FlippyCar"]
+#Const C_CarIndex [0 => "trackmania:stadiumcar",1 => "trackmania:canyoncar",2 => "trackmania:valleycar",3 => "trackmania:lagooncar",4 => "trackmania:desertcar",5 => "trackmania:rallycar",6 => "trackmania:snowcar",7 => "trackmania:coastcar",8 => "trackmania:islandcar",9 => "trackmania:baycar", 10 => "trackmania:trafficcar", 11 => "tmall:canyoncarflippy"]
 
-declare Ident[Text] CarModels;
-declare Integer[] MapCars;
-
-***Match_InitServer***
+***Match_StartServer***
 ***
-foreach (Car in C_CarIndex) {
-    if (Car != "FlippyCar"){
-        CarModels[Car] = ItemList_AddWithSkin("Vehicles/" ^ Car ^ ".Item.Gbx", "Default");
-    }
-    else {
-        CarModels[Car] = ItemList_AddWithSkin("VehiclesExtra/CanyonCarFlippy.Item.Gbx", "Default");
-    }
-}
+InitKEKUiLayer();
+***
+
+***TMAll_ItemList***
+***
+declare PlayerModels_Server::K_Options NewOptions;
+NewOptions.LoadingMode = PlayerModels_Server::C_LoadingMode_LoadEverything;
+PlayerModels_Server::Load(This, NewOptions);
+***
+
+***Match_InitMap***
+***
+declare Integer[] MapCars for Teams[0];
+MapCars = GetMapCars();
 ***
 
 ***Match_StartMap***
 ***
-LogMapEffects();
-MapCars = GetMapCars();
 declare metadata Boolean RandEvents for Map;
 declare metadata Boolean SizeChanges for Map;
 declare metadata Integer EffectVersion for Map;
@@ -39,41 +40,14 @@ else {
     EnableBonusEvents = RandEvents;
     EnableCheckpointBonus = SizeChanges;
 }
-foreach (Player in AllPlayers) {
-    SetPlayerSettings(Player);
-}
 ***
 
-***Match_PlayLoop***
+***TMAll_AfterAutoGameplay***
 ***
-foreach (Event in PendingEvents) {
-    switch (Event.Type) {
-        case CTmModeEvent::EType::OnPlayerAdded: {
-            if (Event.Player != Null) {
-                SetPlayerSettings(Event.Player);
-            }
-        }
-        case CTmModeEvent::EType::GiveUp: {
-            SetPlayerSettings(Event.Player);
-        }
-        case CTmModeEvent::EType::WayPoint:{
-            if (Event.IsEndRace) {
-                SetPlayerSettings(Event.Player);
-            }
-        }
-    }
-}
-foreach (Player in AllPlayers) {
-    if (TM::IsWaiting(Player)) {
-        SetPlayerSettings(Player);
-    }
-}
-***
-
-***Match_StartMap***
-***
-foreach (Player in AllPlayers) {
-    Player.ForceModelId = NullId;
+declare Integer[] MapCars for Teams[0];
+declare metadata Boolean RandCars for Map;
+if (RandCars && MapCars.count > 0) {
+    PlayerModels_Server::AssignModel(_Player, C_CarIndex[MapCars[ML::Rand(0, MapCars.count - 1)]]);
 }
 ***
 
@@ -92,54 +66,347 @@ Integer[] GetMapCars(){
     return [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 }
 
-Void SetPlayerSettings(CTmPlayer _Player){
-    declare metadata Boolean RandCars for Map;
-    declare metadata Boolean LowGravity for Map;
-    if (LowGravity) {
-        _Player.GravityCoef = 0.5;
-    }
-    else {
-        _Player.GravityCoef = 1.0;
-    }
-    if (RandCars) {
-        _Player.ForceModelId = CarModels[C_CarIndex[MapCars[ML::Rand(0, MapCars.count - 1)]]];
-    }
-    else {
-        _Player.ForceModelId = NullId;
+Void InitKEKUiLayer(){
+    declare CUILayer Layer = UIManager.UILayerCreate();
+    Layer.ManialinkPage = """
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<manialink version="3">
+<frame id="Frame_EffectInfo" pos="0 80">
+    <frame id="Frame_OldBonusInfoBG" hidden="1">
+        <quad pos="25 -12.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" rot="-90" colorize="555"/>
+        <quad pos="40 -2.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" rot="-90" colorize="555"/>
+        <quad pos="25 -7.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
+        <quad pos="40 5" z-index="0" size="5 10" bgcolor="FFFA" halign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555" valign="center"/>
+        <quad pos="37.5 -2.5" z-index="0" size="10 5" bgcolor="FFFA" halign="right" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
+        <quad pos="20 -7.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" rot="-90" colorize="555"/>
+        <quad pos="25 -2.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" rot="90" colorize="555"/>
+        <quad pos="27.5 -5" z-index="0" size="5 10" bgcolor="FFFA" halign="left" valign="bottom" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" rot="90" colorize="555"/>
+        <quad pos="37.5555 1.1e-07" z-index="0" size="5 10" bgcolor="FFFA" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" rot="-90" halign="left" valign="bottom" colorize="555"/>
+        <quad pos="-25 -12.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" colorize="555"/>
+        <quad pos="-40 -2.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" colorize="555"/>
+        <quad pos="-25 -7.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
+        <quad pos="-40 5" z-index="0" size="5 10" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
+        <quad pos="-37.5 -2.5" z-index="0" size="10 5" bgcolor="FFFA" valign="center" halign="left" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
+        <quad pos="-20 -7.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" colorize="555"/>
+        <quad pos="-25 -2.5" z-index="0" size="5 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" rot="-180" colorize="555"/>
+        <quad pos="-27.5 -5" z-index="0" size="10 5" bgcolor="FFFA" halign="left" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" rot="-180" valign="bottom" colorize="555"/>
+        <quad pos="-37.5 0" z-index="0" size="10 5" bgcolor="FFFA" halign="left" valign="bottom" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" colorize="555"/>
+        <quad pos="22.5 -12.5" z-index="0" size="45 5" bgcolor="FFFA" halign="right" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" colorize="555"/>
+    </frame>
+    
+    <label  z-index="0" size="60 10" text="Earthquake" halign="center" valign="center" pos="0 6" textsize="7" textemboss="1" textfont="Gotham/Gotham-Bold" id="Label_EffectName"/>
+    <label  z-index="0" size="45 10" text="10" halign="center" valign="center" pos="0 -4" textsize="7" textemboss="1" textfont="Gotham/Gotham-Bold" id="Label_EffectTimer"/>
+    
+    <quad pos="-35 6" z-index="0" size="0.5 5" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="-33 6" z-index="0" size="0.5 3" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="-31 6" z-index="0" size="0.5 7" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="35 6" z-index="0" size="0.5 5" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="38 6" z-index="0" size="3 0.5" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="-38 6" z-index="0" size="3 0.5" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="33 6" z-index="0" size="0.5 3" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="31 6" z-index="0" size="0.5 7" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="0 0" z-index="0" size="80 0.5" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="0 -10" z-index="0" size="42 0.5" bgcolor="FFFA" halign="center" valign="center" hidden="1"/>
+    
+    <quad pos="-20 -5" z-index="0" size="0.5 5" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="-18 -5" z-index="0" size="0.5 3" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="-16 -5" z-index="0" size="0.5 1" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="-14.3 -5" z-index="0" size="5 0.5" bgcolor="FFFA" halign="left" valign="center"/>
+    <quad pos="20 -5" z-index="0" size="0.5 5" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="18 -5" z-index="0" size="0.5 3" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="16 -5" z-index="0" size="0.5 1" bgcolor="FFFA" halign="center" valign="center"/>
+    <quad pos="11.8 -5" z-index="0" size="5 0.5" bgcolor="FFFA" halign="center" valign="center"/>
+    
+    <quad pos="0 10" z-index="0" size="75 12" bgcolor="555A" halign="center" valign="top" hidden="1"/>
+    <quad pos="0 -10" z-index="0" size="50 8" bgcolor="555A" halign="center" valign="bottom" hidden="1"/>
+<quad pos="0 40" z-index="0" size="300 100" bgcolor="FFFA" style="Bgs1InRace" substyle="Glow" halign="center" valign="center" colorize="444"/>
+<quad pos="0 20" z-index="0" size="300 100" bgcolor="FFFA" style="Bgs1InRace" substyle="Glow" halign="center" valign="center" colorize="444"/>
+    <quad pos="0 0" z-index="0" size="300 100" bgcolor="FFFA" style="Bgs1InRace" substyle="Glow" halign="center" valign="center" colorize="444"/>
+</frame>
+<frame id="Frame_KEKLEffects" pos="-45 -110" scale="1.0">
+    <label pos="0 9" z-index="0" size="50 10" text="Map Effects" halign="center" valign="center" textfont="Gotham/Gotham-Bold" textemboss="1" textsize="5"/>
+    <label pos="0 3.5" z-index="0" size="47 13" text="Effect1, Effect2, Effect3, Effect4, Effect5" halign="center" textfont="Gotham/Gotham-Medium" textemboss="1" textsize="1.5" autonewline="1" id="Label_EffectList" valign="top"/>
+    <quad pos="-25 -5" z-index="0" size="5 35" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" opacity="1.0" colorize="435"/>
+    <quad pos="25 -5" z-index="0" size="5 35" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" opacity="1.0" colorize="435"/>
+    <quad pos="0 15" z-index="0" size="45 5" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/ColorFill.png" opacity="1.0" colorize="435"/>
+    <quad pos="22.5 12.5" z-index="0" size="5 5" bgcolor="FFFA" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" opacity="1.0" rot="180" valign="top" halign="right" colorize="435"/>
+    <quad pos="-22.5 12.5" z-index="0" size="5 5" bgcolor="FFFA" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedOuter.png" opacity="1.0" rot="90" valign="top" halign="right" colorize="435"/>
+    <quad pos="20435 10" z-index="0" size="5 5" bgcolor="FFFA" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" opacity="1.0" valign="center" halign="center" rot="180"/>
+    <quad pos="-20 10" z-index="0" size="5 5" bgcolor="FFFA" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/RoundedInner.png" opacity="1" valign="center" halign="center" rot="90" colorize="435"/>
+    <quad pos="0 9" z-index="0" size="50 10" bgcolor="FFFA" halign="center" valign="center" style="Bgs1" substyle="BgHealthBar"/>
+    <quad pos="0 0" z-index="0" size="50 30" bgcolor="FFFA" halign="center" valign="center" image="https://raw.githubusercontent.com/Plambt/TM-SMScripts/main/Media/GradientBG.png" opacity="0.5" id="Quad_EffectBG" modulatecolor="C9F"/>
+</frame>
+<quad  z-index="0" size="320 180" bgcolor="FFFA" halign="center" valign="center" image="file://Media/Images/ManiaPlanet_HpJ56h7v53.jpg" hidden="1"/> <!-- I'm never removing this :) -->
+<frame id="Frame_Vignette" pos="0 0" hidden="1">
+    <label pos="0 -60" z-index="0" size="100 10" text="Penalty Time:" halign="center" valign="center" textfont="Gotham/Gotham-Medium" textemboss="1" textsize="5"/>
+    <label pos="0 -67" z-index="0" size="100 10" text="10" halign="center" valign="center" textfont="Gotham/Gotham-Bold" textemboss="1" textsize="5" textcolor="F00" id="Label_PenaltyTimer"/>
+    <quad pos="0 0" z-index="-10000" size="320 180" bgcolor="00000000" image="file://Media/Images/Effects/Vignette.dds" halign="center" valign="center"/>
+    <quad pos="0 0" z-index="-10000" size="320 180" bgcolor="00000000" image="file://Media/Images/Effects/Vignette.dds" halign="center" valign="center"/>
+    <quad pos="0 0" z-index="-10000" size="320 180" bgcolor="FF000011" halign="center" valign="center"/>
+</frame>
+<script><!--
+    #Include "TextLib" as TL
+    #Include "MathLib" as ML
+    #Include "ColorLib" as CL
+    
+    #Struct NetEffectData{
+        Text EffectName;
+        Text EffectTime;
+        Vec3 EffectTimeColor;
     }
     
-}
-
-Void LogMapEffects(){
-    declare Text EffectString;
-    declare metadata Boolean RandEvents for Map;
-    declare metadata Boolean LowGravity for Map;
-    declare metadata Boolean RandCars for Map;
-    declare metadata Boolean SizeChanges for Map;
-    declare metadata Integer EffectVersion for Map;
-    if (EffectVersion == 0){
-        if (RandEvents) {
-            EffectString ^= "RandomEffects ";
-            EffectString ^= "SizeChanges ";
+    declare CMlLabel MapSettings;
+    declare Integer MapInfoTimeout;
+    declare Text RecentMapUid;
+    declare CMlFrame BonusFrame;
+    declare CMlFrame VignetteFrame;
+    declare CMlFrame StuntsFrame;
+    
+    Text GetNextRainbowColor(Text CurColor){
+        declare Text[Text] Yummers = ["faa" => "fda", "fda" => "ffa", "ffa" => "bfa", "bfa" => "aff", "aff" => "daf", "daf" => "faa"];
+        return Yummers[CurColor];
+    }
+    
+    Text BonusEnumToText(CTmMlPlayer::ETmBonusModeEventType BonusType, Boolean IsExtra){
+        declare Text NewEffectName = "";
+        switch (BonusType){
+            case CTmMlPlayer::ETmBonusModeEventType::Bumps: {
+                NewEffectName = "$fdaEarthquake";
+            }
+            case CTmMlPlayer::ETmBonusModeEventType::LowGravity: {
+                NewEffectName = "$aefLevitation";
+            }
+            case CTmMlPlayer::ETmBonusModeEventType::FreeWheeling: {
+                NewEffectName = "$faaFreeWheeling";
+            }
+            case CTmMlPlayer::ETmBonusModeEventType::LockedDirections: {
+                NewEffectName = "$dafNoSteering";
+            }
+            default: {
+                NewEffectName = "$FFFNone";
+            }
+        }
+        if (IsExtra){
+            NewEffectName = NewEffectName ^ " $db3+";
+        }
+        return NewEffectName;
+    }
+    Void VignetteVisibility(Boolean Shown, CTmMlPlayer Player){
+        if (Player != Null){
+            declare CMlLabel PenaltyTimer = (Page.GetFirstChild("Label_PenaltyTimer") as CMlLabel);
+            declare netread Integer[Text] NetPentalty for Teams[0];
+            if (NetPentalty.existskey(Player.User.Login)){
+                if (NetPentalty[Player.User.Login] != 0){
+                    if (Shown){
+                        PenaltyTimer.Value = ((NetPentalty[Player.User.Login] - GameTime) / 1000) + 1 ^ "";
+                        VignetteFrame.Show();
+                    }
+                    else {
+                        VignetteFrame.Hide();
+                    }
+                }
+                else {
+                    VignetteFrame.Hide();
+                }
+            }
+            else {
+                VignetteFrame.Hide();
+            }
+        }
+        else {
+            VignetteFrame.Hide();
         }
     }
-    else {
-        if (RandEvents) {
-            EffectString ^= "RandomEffects ";
+    Void BonusEffectVisibility(Boolean Shown, CTmMlPlayer ViewedPlayer, CTmMlPlayer ClientPlayer){
+        declare metadata Boolean RandEvents for Map;
+        declare CMlLabel BonusName = (Page.GetFirstChild("Label_EffectName") as CMlLabel);
+        declare CMlLabel BonusTimer = (Page.GetFirstChild("Label_EffectTimer") as CMlLabel);
+        if (ViewedPlayer != Null){
+            declare NetEffectData EffectData;
+            if (ViewedPlayer.RaceState == CTmMlPlayer::ERaceState::Running){
+                EffectData.EffectName = BonusEnumToText(ViewedPlayer.BonusModeEventType, ViewedPlayer.BonusModeEventIsGold);
+                if (ViewedPlayer.BonusModeTimeTillEvent <= 6000 && ViewedPlayer.BonusModeTimeTillEvent != 0){
+                    EffectData.EffectTimeColor = CL::HexToRgb("F22");
+                    EffectData.EffectTime = (ViewedPlayer.BonusModeTimeTillEvent / 1000) + 1 ^ "";
+                }
+                else if (ViewedPlayer.BonusModeTimeTillEvent == 0){
+                    EffectData.EffectTimeColor = CL::HexToRgb("F90");
+                    EffectData.EffectTime = (ViewedPlayer.BonusModeTimeTillEndEvent / 1000) + 1 ^ "";
+                    
+                }
+                else {
+                    EffectData.EffectTimeColor = CL::HexToRgb("FFF");
+                    EffectData.EffectTime = (ViewedPlayer.BonusModeTimeTillEvent / 1000) + 1 ^ "";
+                }
+            }
+            else {
+                declare Text CurYummer for Teams[0];
+                declare Integer NextYumm for Teams[0];
+                EffectData.EffectName = "$" ^ CurYummer ^ "Please Wait";
+                EffectData.EffectTime = "$" ^ CurYummer ^ "...";
+                if (Now >= NextYumm){
+                    if (CurYummer == ""){
+                        CurYummer = "faa";
+                    }
+                    CurYummer = GetNextRainbowColor(CurYummer);
+                    NextYumm = Now + 100;
+                }
+            }
+            BonusTimer.TextColor = EffectData.EffectTimeColor;
+            BonusTimer.Value = EffectData.EffectTime;
+            BonusName.Value = EffectData.EffectName;
+            if (ClientPlayer != ViewedPlayer){
+                BonusFrame.Hide();
+            }
+            else{
+                if (RandEvents){
+                    if (Shown){
+                        BonusFrame.Show();
+                    }
+                    else {
+                        BonusFrame.Hide();
+                    }
+                }
+                else {
+                    BonusFrame.Hide();
+                }
+            }
         }
-        if (SizeChanges) {
-            EffectString ^= "SizeChanges ";
+        else {
+            BonusFrame.Hide();
         }
     }
     
-    if (LowGravity) {
-        EffectString ^= "LowGravity ";
+    Void UpdateEffectPage(){
+        declare Text[] EffectNames;
+        declare metadata Boolean RandEvents for Map;
+        declare metadata Boolean LowGravity for Map;
+        declare metadata Boolean RandCars for Map;
+        declare metadata Boolean IncStuntPoints for Map;
+        declare metadata Boolean UseCrashPenalty for Map;
+        declare metadata Integer EffectVersion for Map;
+        declare metadata Boolean SizeChanges for Map;
+        declare metadata Integer RoundLimit for Map;
+        declare metadata Boolean RandomFinishes for Map;
+        if (LowGravity) {
+            EffectNames.add("LowGravity");
+        }
+        switch (EffectVersion) {
+            case 0: {
+                if (RandEvents){
+                    EffectNames.add("RandomEvents");
+                    EffectNames.add("SizeChanges");
+                }
+            }
+            default: {
+                if (RandEvents) {
+                    EffectNames.add("RandomEvents");
+                }
+                if (SizeChanges) {
+                    EffectNames.add("SizeChanges");
+                }
+            }
+        }
+        
+        if (RandCars) {
+            EffectNames.add("RandomCars");
+        }
+        if (IncStuntPoints) {
+            EffectNames.add("StuntsBonus");
+        }
+        if (UseCrashPenalty) {
+            EffectNames.add("CrashPenalty");
+        }
+        if (!(RoundLimit <= 0) && !(RoundLimit > 3)) {
+            EffectNames.add("RoundsLimit");
+        }
+        if (RandomFinishes){
+            EffectNames.add("RandFinish");
+        }
+        if (EffectNames.count == 0) {
+            MapSettings.Value = "None";
+        }
+        else {
+            MapSettings.Value = TL::Join(", ", EffectNames);
+        }
     }
-    if (RandCars) {
-        EffectString ^= "RandomCars";
+    
+    main() {
+        VignetteFrame = (Page.GetFirstChild("Frame_Vignette") as CMlFrame);
+        BonusFrame = (Page.GetFirstChild("Frame_EffectInfo") as CMlFrame);
+        declare CMlFrame EffectsFrame = (Page.GetFirstChild("Frame_KEKLEffects") as CMlFrame);
+        declare Boolean InfoHasMovedIn = False;
+        declare Text EventType;
+        MapSettings = (Page.GetFirstChild("Label_EffectList") as CMlLabel);
+        
+        MapInfoTimeout = -1;
+        while(True) {
+            yield;
+            if(Map != Null){
+                if (Map.MapInfo.MapUid != RecentMapUid) {
+                    UpdateEffectPage();
+                    RecentMapUid = Map.MapInfo.MapUid;
+                }
+            }
+            if (MapInfoTimeout >= Now) {
+                if (!InfoHasMovedIn) {
+                    AnimMgr.Add(EffectsFrame, "<frame pos=\"-45 -80\" />", Now, 250, CAnimManager::EAnimManagerEasing::ExpIn);
+                    InfoHasMovedIn = True;
+                }
+            }
+            else if (InfoHasMovedIn) {
+                AnimMgr.Add(EffectsFrame, "<frame pos=\"-45 -110\" />", Now, 250, CAnimManager::EAnimManagerEasing::ExpOut);
+                InfoHasMovedIn = False;
+            }
+            if (GUIPlayer != Null){
+                declare Integer PlayerStuntPoints for GUIPlayer.User;
+                BonusEffectVisibility(True, GUIPlayer, InputPlayer);
+                VignetteVisibility(True, GUIPlayer);
+                if (GUIPlayer.RaceState == CTmMlPlayer::ERaceState::BeforeStart) {
+                    PlayerStuntPoints = 0;
+                    MapInfoTimeout = Now + 2000;
+                }
+                
+                foreach (Event in RaceEvents) {
+                    if (Event.Player == GUIPlayer) {
+                        switch (Event.Type) {
+                            case CTmRaceClientEvent::EType::Turbo : {
+                                EventType = "Turbo";
+                            }
+                            case CTmRaceClientEvent::EType::Horn : {
+                                EventType = "Horn";
+                            }
+                            case CTmRaceClientEvent::EType::Impact : {
+                                EventType = "Impact";
+                            }
+                            case CTmRaceClientEvent::EType::WaterSplash : {
+                                EventType = "WaterSplash";
+                            }
+                            case CTmRaceClientEvent::EType::GlassSmash : {
+                                EventType = "GlassSmash";
+                            }
+                            case CTmRaceClientEvent::EType::PartDetached : {
+                                EventType = "PartDetached";
+                            }
+                            default: {
+                                EventType = "Unknown";
+                            }
+                        }
+                        if (EventType != "Unknown") {
+                            SendCustomEvent("RaceEvent", [EventType, Event.Player.Login]);
+                        }
+                    }
+                }
+            }
+            else {
+                VignetteVisibility(False, Null);
+                BonusEffectVisibility(False, Null, Null);
+            }
+        }
     }
-    if (EffectString == "") {
-        EffectString = "None";
-    }
-    UIManager.UIAll.SendChat("MapEffects: " ^ EffectString);
+    --></script>
+</manialink>
+""";
+    Layer.Type = CUILayer::EUILayerType::Normal;
+    UIManager.UIAll.UILayers.add(Layer);
 }
