@@ -108,6 +108,7 @@ Scores::SaveInScore(Scores::C_Points_Match);
 
 ***Match_InitMap***
 ***
+RoundCar = "Default";
 UpdateScoresTableFooter(S_PointsLimit, S_RoundsPerMap, S_MapsPerMatch);
 ***
 
@@ -130,7 +131,6 @@ EnableCheckpointBonus = (SizeChanges || RandEvents);
 }
 MapCars = GetMapCars();
 UsedCars.clear();
-RoundCar = "Default";
 foreach (Player in AllPlayers) {
 SetPlayerSettings(Player);
 }
