@@ -25,6 +25,15 @@
 #Setting S_WarmUpDuration	0	as _("Duration of one warm up :")
 #Setting S_MaximumStuntRemoval 0.33 as _("Maximum Stunt Removal :")
 
+#Setting S_AllowLGravity True
+#Setting S_AllowREffects False
+#Setting S_AllowSChanges False
+#Setting S_AllowRCars True
+#Setting S_AllowPenalty False
+#Setting S_AllowRFinish True
+#Setting S_AllowRLimit True
+#Setting S_AllowStunts True
+
 #Setting S_ScriptEnvironment "production"/*/"development"*/
 
 // ---------------------------------- //
@@ -47,12 +56,26 @@
     Integer StuntTime;
 }
 
+#Struct MapSettings{
+    Boolean LowGravity;
+    Boolean RandomEffects;
+    Boolean SizeChanges;
+    Boolean RandomCars;
+    Boolean CrashPenalty;
+    Boolean RandomFinishes;
+    Boolean CRoundLimit;
+    Boolean StuntsBonus;
+    Text CurMapName;
+}
+
 declare Integer[] UsedCars;
 declare Integer[] MapCars;
 declare Ident[Text] CarModels;
 declare Vec3[Integer] RandFinList;
 declare Vec3 PreviousFirstFin;
 declare CUILayer FinishMarker;
+declare CUILayer KEKLUI;
+declare MapSettings GlobalMapSettings;
 
 // ---------------------------------- //
 // Extends
@@ -91,6 +114,7 @@ PlayerModels_Server::Load(This, NewOptions);
 
 ***Match_InitServer***
 ***
+InitKEKUiLayer();
 declare Text RoundCar for Teams[0];
 declare PrevPointsLimit = S_PointsLimit - 1;
 declare PrevRoundsPerMap = S_RoundsPerMap - 1;
@@ -99,7 +123,7 @@ declare PrevMapsPerMatch = S_MapsPerMatch - 1;
 
 ***Match_StartServer***
 ***
-InitKEKUiLayer();
+
 SetupGlobalFinishMarker();
 WarmUp::SetAvailability(True);
 ChannelProgression::Enable(S_IsChannelServer);
@@ -108,27 +132,49 @@ Scores::SaveInScore(Scores::C_Points_Match);
 
 ***Match_InitMap***
 ***
+declare MapSettings NewMapSettings;
+GlobalMapSettings = NewMapSettings;
+
+//Init KEKL Effects
+declare metadata Boolean RandEvents for Map;
+declare metadata Boolean SizeChanges for Map;
+declare metadata Boolean LowGravity for Map;
+declare metadata Boolean RandCars for Map;
+declare metadata Boolean UseCrashPenalty for Map;
+declare metadata Integer RoundLimit for Map;
+declare metadata Boolean IncStuntPoints for Map;
+declare metadata Boolean RandomFinishes for Map;
+declare metadata Integer EffectVersion for Map;
+
+NewMapSettings.LowGravity = LowGravity && S_AllowLGravity;
+NewMapSettings.RandomCars = RandCars && S_AllowRCars;
+NewMapSettings.CrashPenalty = UseCrashPenalty && S_AllowPenalty;
+NewMapSettings.RandomFinishes = RandomFinishes && S_AllowRFinish;
+NewMapSettings.StuntsBonus = IncStuntPoints && S_AllowStunts;
+NewMapSettings.CRoundLimit = (RoundLimit != -1) && S_AllowRLimit;
+if (EffectVersion == 0){
+    NewMapSettings.RandomEffects = RandEvents && S_AllowREffects;
+    NewMapSettings.SizeChanges = RandEvents && S_AllowSChanges;
+}
+else {
+    NewMapSettings.RandomEffects = RandEvents && S_AllowREffects;
+    NewMapSettings.SizeChanges = SizeChanges && S_AllowSChanges;
+}
+NewMapSettings.CurMapName = Map.MapInfo.MapUid;
+
+declare netwrite MapSettings CurMapSettings for Teams[0];
+GlobalMapSettings = NewMapSettings;
+CurMapSettings = GlobalMapSettings;
+
 RoundCar = "Default";
 UpdateScoresTableFooter(S_PointsLimit, S_RoundsPerMap, S_MapsPerMatch);
 ***
 
 ***Match_StartMap***
 ***
-//Init KEKL Effects
-declare metadata Boolean RandEvents for Map;
-declare metadata Boolean SizeChanges for Map;
-declare metadata Integer EffectVersion for Map;
-
-if (EffectVersion == 0){
-EnableScaleCar = RandEvents;
-EnableBonusEvents = RandEvents;
-EnableCheckpointBonus = RandEvents;
-}
-else {
-EnableScaleCar = SizeChanges;
-EnableBonusEvents = RandEvents;
-EnableCheckpointBonus = (SizeChanges || RandEvents);
-}
+EnableScaleCar = GlobalMapSettings.SizeChanges;
+EnableBonusEvents = GlobalMapSettings.RandomEffects;
+EnableCheckpointBonus = (GlobalMapSettings.SizeChanges || GlobalMapSettings.RandomEffects);
 MapCars = GetMapCars();
 UsedCars.clear();
 foreach (Player in AllPlayers) {
@@ -157,14 +203,12 @@ Rounds_RoundsPerformance = [];
 
 ***Match_InitRound***
 ***
-declare metadata Boolean RandCars for Map;
-declare metadata Boolean RandomFinishes for Map;
 RoundCar = "Default";
-if (RandCars) {
+if (GlobalMapSettings.RandomCars) {
 SetRoundCar();
 }
 RandFinList.clear();
-if (RandomFinishes){
+if (GlobalMapSettings.RandomFinishes){
     RandFinList = GetRandomFinArray();
 }
 
@@ -185,21 +229,11 @@ foreach(Score in Scores){
 
 ***Match_StartRound***
 ***
-declare metadata Boolean IncStuntPoints for Map;
-declare metadata Integer EffectVersion for Map;
 UpdateScoresTableFooter(S_PointsLimit, S_RoundsPerMap, S_MapsPerMatch);
-/*      Will see how things play out without this.
-if (IncStuntPoints && EffectVersion >= 2){
-    CutOffTimeLimit = Now + (Map.TMObjective_AuthorTime + 33000);
-}
-*/
 ***
 
 ***Match_PlayLoop***
 ***
-declare metadata Boolean UseCrashPenalty for Map;
-declare metadata Boolean IncStuntPoints for Map;
-declare metadata Boolean RandomFinishes for Map;
 foreach (Player in AllPlayers) {
     declare Integer PenaltyTimeout for Player.User;
     if (PenaltyTimeout < Now && PenaltyTimeout != 0) {
@@ -207,7 +241,7 @@ foreach (Player in AllPlayers) {
     }
 SetPlayerSettings(Player);
 }
-if (UseCrashPenalty) {
+if (GlobalMapSettings.CrashPenalty) {
 foreach (UiEvent in UIManager.PendingEvents) {
 switch (UiEvent.CustomEventType) {
     case "RaceEvent": {
@@ -235,7 +269,7 @@ case CTmModeEvent::EType::WayPoint: {
     }
     if (Event.IsEndRace) {
         declare Boolean EndedOnWrongFinish for Event.Player.Score;
-        if (RandomFinishes && !DidFinishAtTarget(Event.Player.Position, RandFinList[Event.Player.CurrentNbLaps - 1])){
+        if (GlobalMapSettings.RandomFinishes && !DidFinishAtTarget(Event.Player.Position, RandFinList[Event.Player.CurrentNbLaps - 1])){
             EndedOnWrongFinish = True;
         }
         declare Better = Scores::SetPlayerBestRaceIfBetter(Event.Player.Score, Event.Player.CurRace, CTmResult::ETmRaceResultCriteria::Time);
@@ -253,7 +287,7 @@ case CTmModeEvent::EType::WayPoint: {
         }
     }
     if (Event.IsEndLap) {
-        if (RandomFinishes && !Event.IsEndRace && !DidFinishAtTarget(Event.Player.Position, RandFinList[Event.Player.CurrentNbLaps - 1])){
+        if (GlobalMapSettings.RandomFinishes && !Event.IsEndRace && !DidFinishAtTarget(Event.Player.Position, RandFinList[Event.Player.CurrentNbLaps - 1])){
             SetPlayerPenalty(Event.Player, 3000, False);
         }
         SetupFinishMarkerForPlayer(Event.Player);
@@ -270,7 +304,7 @@ case CTmModeEvent::EType::GiveUp: {
     TM::WaitRace(Event.Player);
 }
 case CTmModeEvent::EType::Stunt: {
-    if (IncStuntPoints){
+    if (GlobalMapSettings.StuntsBonus){
         RegisterStunt(Event);
     }
 }
@@ -402,7 +436,6 @@ if (ChannelProgression::IsEnabled()) {
 ***TMAll_AfterAutoGameplay***
 ***
 declare Text RoundCar for Teams[0];
-log(RoundCar);
 if (RoundCar == "Default" || RoundCar == ""){
     PlayerModels_Server::AssignModel(_Player);
 }
@@ -434,11 +467,10 @@ Void SetupGlobalFinishMarker(){
         </frame>
         <script><!--
         main(){
-            declare metadata Boolean RandomFinishes for Map;
             declare CMlFrame MarkerFrame = (Page.GetFirstChild("Frame_FinishMarker") as CMlFrame);
             while(True){
-                yield();
-                if (RandomFinishes){
+                yield;
+                if ({{{GlobalMapSettings.RandomFinishes}}}){
                     MarkerFrame.Show();
                 }
                 else {
@@ -452,8 +484,7 @@ Void SetupGlobalFinishMarker(){
 }
 
 Void SetupFinishMarkerForPlayer(CTmPlayer _Player){
-    declare metadata Boolean RandomFinishes for Map;
-    if (RandomFinishes){
+    if (GlobalMapSettings.RandomFinishes){
         UIManager.UIAll.LabelsVisibility = CUIConfig::EHudVisibility::MarkersOnly;
         AddAndRemoveMarker(False);
         declare CUIConfig PlayerUI = UIManager.GetUI(_Player);
@@ -672,7 +703,7 @@ Void UpdateScoresTableFooter(Integer _PointsLimit, Integer _RoundsPerMap, Intege
             //L16N [Rounds] Number of rounds played during the map.
             Parts.add(_("Rounds : "));
         }
-        else if (!(RoundLimit <= 0) && !(RoundLimit > 3)){
+        else if (!(RoundLimit <= 0) && !(RoundLimit > 3) && GlobalMapSettings.CRoundLimit){
             if (Parts.count > 0) Message ^= " | ";
             Message ^= """%{{{Parts.count + 1}}}{{{MB_GetRoundCount()}}}/{{{RoundLimit}}}""";
             //L16N [Rounds] Number of rounds played during the map.
@@ -755,10 +786,9 @@ Void ComputeLatestRaceScores(Boolean IsEndOfRound) {
         declare Text PositionTerm = "th";
         declare I = 0;
 
-        declare metadata Boolean IncStuntPoints for Map;
         declare CScore StuntWinner;
         declare Integer StuntWinnerPoints;
-        if (IncStuntPoints && IsEndOfRound){
+        if (GlobalMapSettings.StuntsBonus && IsEndOfRound){
             foreach (Score in Scores) { // loop once to get the stunt winner if stunts is enabled.
                 declare netwrite Integer ScriptedStuntPoints for Score;
                 if (Scores::GetPlayerPrevRaceTime(Score) > 0) {
@@ -808,7 +838,7 @@ Void ComputeLatestRaceScores(Boolean IsEndOfRound) {
                     if (EndedOnWrongFinish){
                         Points = WrongFinishScore;
                     }
-                    if (IncStuntPoints){
+                    if (GlobalMapSettings.StuntsBonus){
                         declare Integer TempRoundScore = ML::NearestInteger(ML::NearestReal(Points) - (ML::NearestReal(Points) * S_MaximumStuntRemoval));
                         if (StuntWinnerPoints != 0 && IsEndOfRound && StuntWinnerPoints != 0){
                             declare Real PointFactor = (ML::NearestReal(ScriptedStuntPoints) / ML::NearestReal(StuntWinnerPoints));
@@ -877,7 +907,7 @@ Boolean MapIsOver() {
     declare metadata Integer RoundLimit for Map;
     if (S_RoundsPerMap > 0 && MB_GetRoundCount() >= S_RoundsPerMap) return True; //< There is a rounds limit and it is reached
     if (PointsLimitReached() == 1) return True; //< There is a points limit and it is reached
-    if (!(RoundLimit <= 0) && !(RoundLimit > 3)){
+    if (!(RoundLimit <= 0) && !(RoundLimit > 3) && GlobalMapSettings.CRoundLimit){
         if (MB_GetRoundCount() >= RoundLimit) return True;
     }
     
@@ -1006,13 +1036,26 @@ Void InitKEKUiLayer(){
         Integer StuntScore;
         Integer StuntTime;
     }
+
+    #Struct MapSettings{
+        Boolean LowGravity;
+        Boolean RandomEffects;
+        Boolean SizeChanges;
+        Boolean RandomCars;
+        Boolean CrashPenalty;
+        Boolean RandomFinishes;
+        Boolean CRoundLimit;
+        Boolean StuntsBonus;
+        Text CurMapName;
+    }
     
-    declare CMlLabel MapSettings;
+    declare CMlLabel MapSettingsUI;
     declare Integer MapInfoTimeout;
     declare Text RecentMapUid;
     declare CMlFrame BonusFrame;
     declare CMlFrame VignetteFrame;
     declare CMlFrame StuntsFrame;
+    declare MapSettings UIMapSettings;
     
     Text GetNextRainbowColor(Text CurColor){
         declare Text[Text] Yummers = ["faa" => "fda", "fda" => "ffa", "ffa" => "bfa", "bfa" => "aff", "aff" => "daf", "daf" => "faa"];
@@ -1070,7 +1113,6 @@ Void InitKEKUiLayer(){
         }
     }
     Void BonusEffectVisibility(Boolean Shown, CTmMlPlayer ViewedPlayer, CTmMlPlayer ClientPlayer){
-        declare metadata Boolean RandEvents for Map;
         declare CMlLabel BonusName = (Page.GetFirstChild("Label_EffectName") as CMlLabel);
         declare CMlLabel BonusTimer = (Page.GetFirstChild("Label_EffectTimer") as CMlLabel);
         if (ViewedPlayer != Null){
@@ -1111,7 +1153,7 @@ Void InitKEKUiLayer(){
                 BonusFrame.Hide();
             }
             else{
-                if (RandEvents){
+                if (UIMapSettings.RandomEffects){
                     if (Shown){
                         BonusFrame.Show();
                     }
@@ -1130,7 +1172,7 @@ Void InitKEKUiLayer(){
     }
     
     Void ManageStunts(CTmMlPlayer Player){
-        declare metadata Boolean IncStuntPoints for Map;
+        
         declare CMlLabel StuntName = (Page.GetFirstChild("Label_StuntsName") as CMlLabel);
         declare CMlLabel StuntReward = (Page.GetFirstChild("Label_StuntReward") as CMlLabel);
         declare CMlLabel StuntPoints = (Page.GetFirstChild("Label_StuntPoints") as CMlLabel);
@@ -1153,7 +1195,7 @@ Void InitKEKUiLayer(){
                 StuntName.Show();
                 StuntReward.Show();
             }
-            if (IncStuntPoints){
+            if (UIMapSettings.StuntsBonus){
                 StuntsFrame.Show();
             }
             else {
@@ -1177,46 +1219,57 @@ Void InitKEKUiLayer(){
         declare metadata Boolean SizeChanges for Map;
         declare metadata Integer RoundLimit for Map;
         declare metadata Boolean RandomFinishes for Map;
+        declare Text EffectColor;
+        if (UIMapSettings.LowGravity) { EffectColor = "$fff"; } else { EffectColor = "$f00"; }
         if (LowGravity) {
-            EffectNames.add("LowGravity");
+            EffectNames.add(EffectColor ^ "LowGravity");
         }
         switch (EffectVersion) {
             case 0: {
                 if (RandEvents){
-                    EffectNames.add("RandomEvents");
-                    EffectNames.add("SizeChanges");
+                    if (UIMapSettings.RandomEffects) { EffectColor = "$fff"; } else { EffectColor = "$f00"; }
+                    EffectNames.add(EffectColor ^ "RandomEvents");
+                    if (UIMapSettings.SizeChanges) { EffectColor = "$fff"; } else { EffectColor = "$f00"; }
+                    EffectNames.add(EffectColor ^ "SizeChanges");
                 }
             }
             default: {
                 if (RandEvents) {
-                    EffectNames.add("RandomEvents");
+                    if (UIMapSettings.RandomEffects) { EffectColor = "$fff"; } else { EffectColor = "$f00"; }
+                    EffectNames.add(EffectColor ^ "RandomEvents");
                 }
                 if (SizeChanges) {
-                    EffectNames.add("SizeChanges");
+                    if (UIMapSettings.SizeChanges) { EffectColor = "$fff"; } else { EffectColor = "$f00"; }
+                    EffectNames.add(EffectColor ^ "SizeChanges");
                 }
             }
         }
         
         if (RandCars) {
-            EffectNames.add("RandomCars");
+            if (UIMapSettings.RandomCars) { EffectColor = "$fff"; } else { EffectColor = "$f00"; }
+            EffectNames.add(EffectColor ^ "RandomCars");
         }
         if (IncStuntPoints) {
-            EffectNames.add("StuntsBonus");
+            if (UIMapSettings.StuntsBonus) { EffectColor = "$fff"; } else { EffectColor = "$f00"; }
+            EffectNames.add(EffectColor ^ "StuntsBonus");
         }
         if (UseCrashPenalty) {
-            EffectNames.add("CrashPenalty");
+            if (UIMapSettings.CrashPenalty) { EffectColor = "$fff"; } else { EffectColor = "$f00"; }
+            EffectNames.add(EffectColor ^ "CrashPenalty");
         }
         if (!(RoundLimit <= 0) && !(RoundLimit > 3)) {
-            EffectNames.add("RoundsLimit");
+            if (UIMapSettings.CRoundLimit) { EffectColor = "$fff"; } else { EffectColor = "$f00"; }
+            EffectNames.add(EffectColor ^ "RoundsLimit");
         }
         if (RandomFinishes){
-            EffectNames.add("RandFinish");
+            if (UIMapSettings.RandomFinishes) { EffectColor = "$fff"; } else { EffectColor = "$f00"; }
+            EffectNames.add(EffectColor ^ "RandFinish");
         }
         if (EffectNames.count == 0) {
-            MapSettings.Value = "None";
+            MapSettingsUI.Value = "$fffNone";
         }
         else {
-            MapSettings.Value = TL::Join(", ", EffectNames);
+            MapSettingsUI.Value = TL::Join("$fff, ", EffectNames);
         }
     }
     
@@ -1226,14 +1279,17 @@ Void InitKEKUiLayer(){
         StuntsFrame = (Page.GetFirstChild("Frame_Stunts") as CMlFrame);
         declare CMlFrame EffectsFrame = (Page.GetFirstChild("Frame_KEKLEffects") as CMlFrame);
         declare Boolean InfoHasMovedIn = False;
+        declare netread MapSettings CurMapSettings for Teams[0];
         declare Text EventType;
-        MapSettings = (Page.GetFirstChild("Label_EffectList") as CMlLabel);
+        MapSettingsUI = (Page.GetFirstChild("Label_EffectList") as CMlLabel);
         
         MapInfoTimeout = -1;
         while(True) {
+            
             yield;
             if(Map != Null){
-                if (Map.MapInfo.MapUid != RecentMapUid) {
+                if (Map.MapInfo.MapUid == CurMapSettings.CurMapName && UIMapSettings.CurMapName != CurMapSettings.CurMapName) {
+                    UIMapSettings = CurMapSettings;
                     UpdateEffectPage();
                     RecentMapUid = Map.MapInfo.MapUid;
                 }
@@ -1300,4 +1356,5 @@ Void InitKEKUiLayer(){
 """;
     Layer.Type = CUILayer::EUILayerType::Normal;
     UIManager.UIAll.UILayers.add(Layer);
+    KEKLUI = Layer;
 }
