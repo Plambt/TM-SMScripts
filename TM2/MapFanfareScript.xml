@@ -5,8 +5,10 @@
     #Include "MathLib" as ML
     
     main() {
-        if(ML::Rand(1, 100) != 1){
-            TriggerPageAction("Finish_Fanfare");
+        While(True){
+            if(ML::Rand(1, 100) != 1){
+                TriggerPageAction("Finish_Fanfare");
+            }
         }
     }
     --></script>
