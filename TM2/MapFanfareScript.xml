@@ -5,13 +5,11 @@
     #Include "MathLib" as ML
     
     main() {
-        while(True){
-            if(ML::Rand(1, 100) != 1){
-                log("Hello Internet");
-                TriggerPageAction("maniaplanet:togglespec");
-            }
-        yield;
-        }
+		declare Integer FanfareChance = ML::Rand(1, 7);
+		if(FanfareChance == 1 && Players.count > 1){
+			//Server plays fanfare for Player
+			TriggerPageAction("finish_fanfare");
+		}
     }
     --></script>
 </manialink>
