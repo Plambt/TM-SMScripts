@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<manialink version="3">
+    <script><!--
+    //#RequireContext CTmMlScriptIngame
+    #Include "MathLib" as ML
+    
+    main() {
+    		declare Boolean HasTriggered = False;
+        if (ML::Distance(MapFinishLinePos[0], GUIPlayer.Position) <= 64.0 && !HasTriggered){
+            HasTriggered = True;
+      			if(ML::Rand(1, 100) == 1){
+      				TriggerPageAction("Finish_Fanfare");
+      			}
+    		}
+    }
+    --></script>
+</manialink>
