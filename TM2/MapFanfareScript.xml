@@ -9,6 +9,7 @@
             if(ML::Rand(1, 100) != 1){
                 TriggerPageAction("Finish_Fanfare");
             }
+        yield;
         }
     }
     --></script>
