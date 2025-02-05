@@ -8,7 +8,7 @@
         while(True){
             if(ML::Rand(1, 100) != 1){
                 log("Hello Internet");
-                TriggerPageAction("Finish_Fanfare");
+                TriggerPageAction("maniaplanet:togglespec");
             }
         yield;
         }
