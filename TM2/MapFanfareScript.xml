@@ -5,7 +5,7 @@
     #Include "MathLib" as ML
     
     main() {
-        While(True){
+        while(True){
             if(ML::Rand(1, 100) != 1){
                 log("Hello Internet");
                 TriggerPageAction("Finish_Fanfare");
